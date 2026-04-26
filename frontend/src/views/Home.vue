@@ -18,6 +18,10 @@
           <option value="">全部标签</option>
           <option v-for="tag in allTags" :key="tag.id" :value="tag.id">{{ tag.name }}</option>
         </select>
+
+        <button class="btn btn-view-toggle" @click="toggleViewMode">
+          {{ viewMode === 'cover' ? '📋 列表' : '🖼️ 封面' }}
+        </button>
       </div>
 
       <div class="batch-actions" v-if="selectedBooks.length > 0">
@@ -29,7 +33,7 @@
       </div>
     </div>
 
-    <div class="book-grid">
+    <div class="book-grid" :class="{ 'cover-mode': viewMode === 'cover' }">
       <div
         v-for="book in filteredBooks"
         :key="book.id"
@@ -45,7 +49,11 @@
           />
         </div>
 
-        <div class="book-cover">
+        <div class="book-cover" v-if="viewMode === 'cover'">
+          <img v-if="book.cover" :src="book.cover" alt="封面" class="cover-img" />
+          <span v-else class="book-emoji">📖</span>
+        </div>
+        <div class="book-cover" v-else>
           <span class="book-emoji">📖</span>
         </div>
 
@@ -89,13 +97,22 @@ const selectedCategory = ref('')
 const selectedStatus = ref('')
 const selectedTag = ref('')
 const selectedBooks = ref([])
+const viewMode = ref('list')
 
 const categories = computed(() => bookStore.categories)
 const allTags = computed(() => bookStore.tags)
 const filteredBooks = computed(() => bookStore.filteredBooks)
 
-onMounted(() => {
+onMounted(async () => {
   bookStore.fetchBooks()
+  try {
+    const mode = await bookStore.getSetting('view_mode')
+    if (mode) {
+      viewMode.value = JSON.parse(mode)
+    }
+  } catch (e) {
+    // ignore
+  }
 })
 
 function filterBooks() {
@@ -146,6 +163,15 @@ async function batchMove() {
 async function batchExport() {
   await bookStore.batchExport(selectedBooks.value)
 }
+
+async function toggleViewMode() {
+  viewMode.value = viewMode.value === 'cover' ? 'list' : 'cover'
+  try {
+    await bookStore.saveSetting('view_mode', viewMode.value)
+  } catch (e) {
+    // ignore
+  }
+}
 </script>
 
 <style scoped>
@@ -172,6 +198,22 @@ async function batchExport() {
   color: var(--text-color);
   font-size: 14px;
   cursor: pointer;
+}
+
+.btn-view-toggle {
+  padding: 8px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--input-bg);
+  color: var(--text-color);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-view-toggle:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
 }
 
 .batch-actions {
@@ -203,6 +245,11 @@ async function batchExport() {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 24px;
+}
+
+.book-grid.cover-mode {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
 }
 
 .book-card {
@@ -240,6 +287,18 @@ async function batchExport() {
   align-items: center;
   justify-content: center;
   margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.cover-mode .book-cover {
+  height: 200px;
+}
+
+.cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
 }
 
 .book-emoji {

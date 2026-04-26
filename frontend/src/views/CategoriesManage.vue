@@ -13,17 +13,38 @@
     </div>
 
     <div class="categories-list">
-      <div v-for="cat in categories" :key="cat.id" class="category-item">
-        <span class="category-name">{{ cat.name }}</span>
-        <div class="category-actions">
-          <button class="btn btn-small" @click="editCategory(cat)">编辑</button>
-          <button
-            class="btn btn-small btn-danger"
-            @click="deleteCategory(cat.id)"
-            :disabled="cat.id === 1"
-          >
-            删除
-          </button>
+      <div v-for="cat in categories" :key="cat.id" class="category-wrapper">
+        <div class="category-item">
+          <div class="category-info">
+            <span class="category-name">{{ cat.name }}</span>
+            <span class="book-count-badge">{{ getCategoryBookCount(cat.id) }}</span>
+          </div>
+          <div class="category-actions">
+            <button class="btn btn-small btn-info" @click="toggleCategoryBooks(cat.id)">查看书籍</button>
+            <button class="btn btn-small" @click="editCategory(cat)">编辑</button>
+            <button
+              class="btn btn-small btn-danger"
+              @click="deleteCategory(cat.id, categories.length)"
+              :disabled="categories.length <= 1"
+            >
+              删除
+            </button>
+          </div>
+        </div>
+        <div v-if="expandedCategoryId === cat.id" class="category-books-section">
+          <div v-if="categoryBooksLoading" class="books-loading">加载中...</div>
+          <div v-else-if="categoryBooks.length === 0" class="books-empty">该分类下暂无书籍</div>
+          <div v-else class="books-list">
+            <div
+              v-for="book in categoryBooks"
+              :key="book.id"
+              class="book-item"
+              @click="goToBook(book.id)"
+            >
+              <span class="book-title">{{ book.title }}</span>
+              <span class="book-author">{{ book.author }}</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -49,12 +70,18 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useBookStore } from '../stores/books'
+import { useRouter } from 'vue-router'
 
 const bookStore = useBookStore()
+const router = useRouter()
 const categories = ref([])
 
 const newCategoryName = ref('')
 const editingCategory = ref(null)
+const expandedCategoryId = ref(null)
+const categoryBooks = ref([])
+const categoryBooksLoading = ref(false)
+const categoryBookCounts = ref({})
 
 onMounted(async () => {
   await bookStore.fetchCategories()
@@ -85,13 +112,45 @@ function cancelEdit() {
   editingCategory.value = null
 }
 
-async function deleteCategory(id) {
-  if (id === 1) return
-  if (confirm('确定删除该分类吗？')) {
+async function deleteCategory(id, total) {
+  if (total <= 1) {
+    alert('无法删除最后一个分类')
+    return
+  }
+  if (confirm('确定删除该分类吗？该分类下的书籍将移至其他分类')) {
     await bookStore.deleteCategory(id)
     await bookStore.fetchCategories()
     categories.value = bookStore.categories
   }
+}
+
+async function toggleCategoryBooks(categoryId) {
+  if (expandedCategoryId.value === categoryId) {
+    expandedCategoryId.value = null
+    categoryBooks.value = []
+    return
+  }
+  expandedCategoryId.value = categoryId
+  categoryBooksLoading.value = true
+  try {
+    const data = await bookStore.fetchCategoryBooks(categoryId)
+    if (data.code === 200) {
+      categoryBooks.value = data.data
+      categoryBookCounts.value[categoryId] = data.data.length
+    }
+  } catch (e) {
+    console.error('Failed to fetch category books:', e)
+    categoryBooks.value = []
+  }
+  categoryBooksLoading.value = false
+}
+
+function getCategoryBookCount(categoryId) {
+  return categoryBookCounts.value[categoryId] ?? '...'
+}
+
+function goToBook(bookId) {
+  router.push(`/books/${bookId}`)
 }
 </script>
 
@@ -127,6 +186,11 @@ async function deleteCategory(id) {
   gap: 8px;
 }
 
+.category-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
 .category-item {
   display: flex;
   justify-content: space-between;
@@ -137,8 +201,28 @@ async function deleteCategory(id) {
   border-radius: 8px;
 }
 
+.category-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .category-name {
   font-size: 14px;
+}
+
+.book-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: var(--primary-light);
+  color: var(--primary-color);
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .category-actions {
@@ -170,6 +254,16 @@ async function deleteCategory(id) {
   font-size: 12px;
 }
 
+.btn-info {
+  background: var(--primary-light);
+  color: var(--primary-color);
+}
+
+.btn-info:hover {
+  background: var(--primary-color);
+  color: white;
+}
+
 .btn-danger {
   background: #ffebee;
   color: #c62828;
@@ -178,6 +272,55 @@ async function deleteCategory(id) {
 .btn-danger:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.category-books-section {
+  margin-top: 4px;
+  padding: 12px 16px;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.books-loading,
+.books-empty {
+  text-align: center;
+  padding: 16px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.books-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.book-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.book-item:hover {
+  border-color: var(--primary-color);
+  background: var(--primary-light);
+}
+
+.book-title {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.book-author {
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 .edit-modal {

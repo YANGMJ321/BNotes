@@ -2,7 +2,8 @@
   <div class="book-detail" v-if="book">
     <div class="book-header">
       <div class="book-cover-large">
-        <span class="book-emoji">📖</span>
+        <img v-if="book.cover" :src="book.cover" alt="封面" class="cover-img" />
+        <span v-else class="book-emoji">📖</span>
       </div>
       <div class="book-info">
         <h1>{{ book.title }}</h1>
@@ -27,13 +28,19 @@
         </div>
         <div class="actions">
           <router-link :to="`/books/${book.id}/edit`" class="btn btn-primary">编辑</router-link>
-          <button class="btn btn-secondary" @click="exportPdf">导出PDF</button>
+          <button class="btn btn-secondary" @click="exportPdf">导出</button>
           <button class="btn btn-danger" @click="deleteBook">删除</button>
         </div>
       </div>
     </div>
 
     <div class="note-section" v-if="note">
+      <div class="note-time-info">
+        <span v-if="note.note_date">笔记时间：{{ formatDate(note.note_date) }}</span>
+        <span v-else>笔记时间：{{ formatDate(note.created_at) }}</span>
+        <span v-if="note.updated_at && note.updated_at !== note.created_at" class="updated-hint">（最后编辑：{{ formatDate(note.updated_at) }}）</span>
+      </div>
+
       <div class="section" v-if="note.excerpts">
         <h2>金句摘录</h2>
         <div class="content" v-html="highlightLinks(note.excerpts)"></div>
@@ -99,6 +106,11 @@ function statusText(status) {
   return map[status] || status
 }
 
+function formatDate(date) {
+  if (!date) return ''
+  return new Date(date).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
 function highlightLinks(text) {
   if (!text) return ''
   let html = text
@@ -155,10 +167,18 @@ async function deleteBook() {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 .book-emoji {
   font-size: 72px;
+}
+
+.cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
 }
 
 .book-info h1 {
@@ -251,6 +271,18 @@ async function deleteBook() {
   display: flex;
   flex-direction: column;
   gap: 30px;
+}
+
+.note-time-info {
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.updated-hint {
+  color: var(--text-secondary);
+  opacity: 0.7;
 }
 
 .section h2 {

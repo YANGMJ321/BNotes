@@ -5,22 +5,41 @@ package-lock.json
 # 构建输出
 dist/
 release/
-
-# Electron
-*.log
-*.tmp
+build/
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
-# 系统文件
+# OS
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# 环境配置
+# Logs
+*.log
+logs/
+
+# 临时文件
+tmp/
+temp/
+.cache/
+
+# Electron
+*.local
+
+# 环境变量
 .env
 .env.local
+.env.*.local
 
-# 测试
+# 测试覆盖率
 coverage/
+.nyc_output/
+
+# 备份文件
+*.bak
+*.backup

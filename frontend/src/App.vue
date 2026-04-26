@@ -26,6 +26,18 @@
       </nav>
 
       <div class="sidebar-footer">
+        <router-link to="/import-export" class="nav-item" :class="{ active: $route.path === '/import-export' }">
+          <span class="icon">📦</span>
+          <span>导入导出</span>
+        </router-link>
+        <router-link to="/feedback" class="nav-item" :class="{ active: $route.path === '/feedback' }">
+          <span class="icon">💬</span>
+          <span>反馈</span>
+        </router-link>
+        <router-link to="/theme" class="nav-item" :class="{ active: $route.path === '/theme' }">
+          <span class="icon">🎨</span>
+          <span>主题</span>
+        </router-link>
         <button class="theme-toggle" @click="toggleTheme" title="切换主题">
           <span>{{ isDark ? '☀️' : '🌙' }}</span>
         </button>
@@ -58,7 +70,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useBookStore } from './stores/books'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -67,7 +79,7 @@ const route = useRoute()
 const router = useRouter()
 
 const searchKeyword = ref('')
-const isDark = computed(() => document.documentElement.classList.contains('dark'))
+const isDark = ref(document.documentElement.classList.contains('dark'))
 
 function handleSearch() {
   if (searchKeyword.value.trim()) {
@@ -78,8 +90,39 @@ function handleSearch() {
 }
 
 function toggleTheme() {
-  window.toggleTheme()
+  isDark.value = !isDark.value
+  document.documentElement.classList.toggle('dark', isDark.value)
+  try {
+    const saved = JSON.parse(localStorage.getItem('bnotes-theme') || '{}')
+    saved.darkMode = isDark.value
+    localStorage.setItem('bnotes-theme', JSON.stringify(saved))
+    bookStore.saveSetting('theme', saved).catch(() => {})
+  } catch (e) {}
 }
+
+onMounted(async () => {
+  try {
+    const value = await bookStore.getSetting('theme')
+    if (value) {
+      const settings = typeof value === 'string' ? JSON.parse(value) : value
+      const root = document.documentElement
+      root.classList.remove('theme-rose', 'theme-sage', 'theme-sand', 'theme-lavender', 'theme-slate')
+      if (settings.preset && settings.preset !== 'custom') {
+        root.classList.add(`theme-${settings.preset}`)
+        root.style.removeProperty('--theme-hue')
+      } else if (settings.preset === 'custom' && settings.customHue != null) {
+        root.style.setProperty('--theme-hue', String(settings.customHue))
+      }
+      root.classList.toggle('dark', !!settings.darkMode)
+      isDark.value = !!settings.darkMode
+      localStorage.setItem('bnotes-theme', JSON.stringify(settings))
+    }
+  } catch (e) {}
+})
+
+watch(() => route.path, () => {
+  isDark.value = document.documentElement.classList.contains('dark')
+})
 </script>
 
 <style scoped>

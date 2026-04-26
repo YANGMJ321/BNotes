@@ -12,6 +12,19 @@
         </div>
 
         <div class="form-group">
+          <label>书籍封面</label>
+          <div class="cover-upload">
+            <div class="cover-preview" v-if="form.cover" :style="{ backgroundImage: `url(${form.cover})` }"></div>
+            <div class="cover-placeholder" v-else>
+              <span>📖</span>
+              <p>点击上传封面</p>
+            </div>
+            <input type="file" accept="image/*" @change="handleCoverUpload" class="cover-input" />
+            <button type="button" v-if="form.cover" class="btn btn-small btn-danger" @click="removeCover">移除封面</button>
+          </div>
+        </div>
+
+        <div class="form-group">
           <label>作者</label>
           <input type="text" v-model="form.author" placeholder="请输入作者" />
         </div>
@@ -68,6 +81,23 @@
 
       <div class="form-section">
         <h2>笔记内容</h2>
+
+        <div class="form-group">
+          <label>笔记时间</label>
+          <div class="time-mode">
+            <label class="radio-label">
+              <input type="radio" v-model="timeMode" value="auto" /> 自动记录
+            </label>
+            <label class="radio-label">
+              <input type="radio" v-model="timeMode" value="custom" /> 自定义时间
+            </label>
+          </div>
+          <input
+            v-if="timeMode === 'custom'"
+            type="datetime-local"
+            v-model="form.note.note_date"
+          />
+        </div>
 
         <div class="form-group">
           <label>金句摘录</label>
@@ -136,7 +166,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBookStore } from '../stores/books'
 
@@ -150,6 +180,7 @@ const categories = computed(() => bookStore.categories)
 const form = reactive({
   title: '',
   author: '',
+  cover: '',
   category_id: 1,
   status: 'want',
   progress: 0,
@@ -166,6 +197,7 @@ const form = reactive({
 const tagInput = ref('')
 const linkSearch = ref('')
 const searchResults = ref([])
+const timeMode = ref('auto')
 
 onMounted(async () => {
   await bookStore.fetchCategories()
@@ -176,6 +208,7 @@ onMounted(async () => {
       const book = result.data
       form.title = book.title
       form.author = book.author
+      form.cover = book.cover || ''
       form.category_id = book.category_id
       form.status = book.status
       form.progress = book.progress
@@ -183,9 +216,23 @@ onMounted(async () => {
       form.tags = book.tags ? book.tags.split(',') : []
       form.note = book.note || { excerpts: '', reflections: '', content: '' }
       form.links = book.links || []
+      timeMode.value = book.note?.note_date ? 'custom' : 'auto'
     }
   }
+
+  window.addEventListener('keydown', handleCtrlS)
 })
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleCtrlS)
+})
+
+function handleCtrlS(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault()
+    saveBook()
+  }
+}
 
 function addTag() {
   const tag = tagInput.value.trim()
@@ -197,6 +244,24 @@ function addTag() {
 
 function removeTag(index) {
   form.tags.splice(index, 1)
+}
+
+function handleCoverUpload(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  if (file.size > 2 * 1024 * 1024) {
+    alert('封面图片不能超过2MB')
+    return
+  }
+  const reader = new FileReader()
+  reader.onload = (event) => {
+    form.cover = event.target.result
+  }
+  reader.readAsDataURL(file)
+}
+
+function removeCover() {
+  form.cover = ''
 }
 
 async function searchBooks() {
@@ -228,12 +293,21 @@ function getBookTitle(bookId) {
 }
 
 async function saveBook() {
+  // 自动记录模式下清空自定义时间
+  if (timeMode.value === 'auto') {
+    form.note.note_date = null
+  }
+
   const data = {
     ...form,
     id: isNew.value ? undefined : route.params.id
   }
 
   const result = await bookStore.saveBook(data)
+  if (result.code === 409) {
+    alert('书名已存在，请修改书名后重试')
+    return
+  }
   if (result.code === 200 || result.code === 201) {
     router.push(isNew.value ? '/' : `/books/${route.params.id}`)
   }
@@ -286,6 +360,7 @@ function goBack() {
 
 .form-group input[type="text"],
 .form-group input[type="date"],
+.form-group input[type="datetime-local"],
 .form-group select,
 .form-group textarea {
   width: 100%;
@@ -436,5 +511,92 @@ function goBack() {
 .btn-secondary {
   background: var(--tag-bg);
   color: var(--text-color);
+}
+
+.time-mode {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 8px;
+}
+
+.radio-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--text-color);
+  cursor: pointer;
+}
+
+.radio-label input[type="radio"] {
+  accent-color: var(--primary-color);
+}
+
+.cover-upload {
+  position: relative;
+  width: 180px;
+  height: 240px;
+  border: 2px dashed var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.cover-upload:hover {
+  border-color: var(--primary-color);
+}
+
+.cover-preview {
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.cover-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-light);
+  color: var(--text-secondary);
+}
+
+.cover-placeholder span {
+  font-size: 48px;
+}
+
+.cover-placeholder p {
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+
+.cover-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.cover-upload .btn-small {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.cover-upload .btn-danger {
+  background: #ffebee;
+  color: #c62828;
 }
 </style>
