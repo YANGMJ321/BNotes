@@ -1,0 +1,34 @@
+{
+    "name": "BNotes",
+    "version": "1.0.0",
+    "description": "读书笔记管理系统",
+    "author": "",
+    "license": "MIT",
+    "build": {
+        "appId": "com.bnotes.app",
+        "productName": "BNotes",
+        "directories": {
+            "output": "dist/release"
+        },
+        "files": [
+            "dist/index.html",
+            "electron/**/*"
+        ],
+        "win": {
+            "target": [
+                {
+                    "target": "portable",
+                    "arch": ["x64"]
+                }
+            ]
+        },
+        "portable": {
+            "artifactName": "${productName}-${version}-portable.${ext}"
+        }
+    },
+    "release": {
+        "current": "1.0.0",
+        "channel": "stable",
+        "checkUpdateUrl": ""
+    }
+}

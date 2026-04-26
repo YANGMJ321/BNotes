@@ -1,0 +1,49 @@
+{
+    "name": "BNotes",
+    "version": "1.0.0",
+    "description": "读书笔记管理系统",
+    "main": "electron/main.js",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview",
+        "electron": "electron .",
+        "dist": "npm run build && electron-builder --win --x64"
+    },
+    "dependencies": {
+        "vue": "^3.4.0",
+        "vue-router": "^4.2.0",
+        "pinia": "^2.1.0",
+        "jspdf": "^2.5.1",
+        "html2canvas": "^1.4.1"
+    },
+    "devDependencies": {
+        "@vitejs/plugin-vue": "^5.0.0",
+        "vite": "^5.0.0",
+        "electron": "^28.0.0",
+        "electron-builder": "^24.0.0"
+    },
+    "build": {
+        "appId": "com.bnotes.app",
+        "productName": "BNotes",
+        "directories": {
+            "output": "release"
+        },
+        "files": [
+            "dist/**/*",
+            "electron/**/*"
+        ],
+        "win": {
+            "target": [
+                {
+                    "target": "nsis",
+                    "arch": ["x64"]
+                }
+            ]
+        },
+        "nsis": {
+            "oneClick": false,
+            "allowToChangeInstallationDirectory": true
+        }
+    }
+}

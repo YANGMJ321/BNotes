@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BNotes - 读书笔记</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/vue-router@4/dist/vue-router.global.js"></script>
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --sidebar-bg: #ffffff;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --text-secondary: #666666;
+            --primary-color: #4a90d9;
+            --primary-dark: #3a7bc8;
+            --primary-light: #e3f2fd;
+            --border-color: #e0e0e0;
+            --input-bg: #ffffff;
+            --hover-bg: #f5f5f5;
+            --tag-bg: #f0f0f0;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+        }
+        .dark {
+            --bg-color: #1a1a2e;
+            --sidebar-bg: #16213e;
+            --card-bg: #1f2937;
+            --text-color: #e5e7eb;
+            --text-secondary: #9ca3af;
+            --primary-color: #60a5fa;
+            --primary-dark: #3b82f6;
+            --primary-light: #1e3a5f;
+            --border-color: #374151;
+            --input-bg: #1f2937;
+            --hover-bg: #374151;
+            --tag-bg: #374151;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { font-size: 16px; }
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+        .app { min-height: 100vh; background: var(--bg-color); color: var(--text-color); transition: background 0.3s, color 0.3s; }
+        .layout { display: flex; min-height: 100vh; }
+        .sidebar { width: 240px; background: var(--sidebar-bg); padding: 20px; display: flex; flex-direction: column; border-right: 1px solid var(--border-color); position: fixed; height: 100vh; overflow-y: auto; }
+        .logo { padding: 10px 0 30px; text-align: center; }
+        .logo h1 { font-size: 24px; margin: 0; color: var(--primary-color); }
+        .logo .subtitle { font-size: 12px; color: var(--text-secondary); }
+        .nav { flex: 1; }
+        .nav-item { display: flex; align-items: center; padding: 12px 16px; color: var(--text-color); text-decoration: none; border-radius: 8px; margin-bottom: 4px; transition: all 0.2s; }
+        .nav-item:hover, .nav-item.active { background: var(--primary-color); color: white; }
+        .nav-item .icon { margin-right: 10px; font-size: 18px; }
+        .sidebar-footer { padding-top: 20px; border-top: 1px solid var(--border-color); }
+        .theme-toggle { width: 100%; padding: 10px; background: transparent; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; font-size: 18px; transition: all 0.2s; }
+        .theme-toggle:hover { background: var(--hover-bg); }
+        .main-content { flex: 1; margin-left: 240px; display: flex; flex-direction: column; }
+        .header { padding: 20px 30px; background: var(--bg-color); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        .search-box { flex: 1; max-width: 500px; }
+        .search-input { width: 100%; padding: 10px 16px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--input-bg); color: var(--text-color); font-size: 14px; transition: all 0.2s; }
+        .search-input:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px var(--primary-light); }
+        .header-actions { margin-left: 20px; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-primary { background: var(--primary-color); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .content-area { flex: 1; padding: 30px; }
+        .home { max-width: 1000px; }
+        .filters { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+        .filter-group { display: flex; gap: 12px; flex-wrap: wrap; }
+        .filter-select { padding: 8px 16px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--input-bg); color: var(--text-color); font-size: 14px; cursor: pointer; }
+        .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
+        .book-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.2s; }
+        .book-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px var(--shadow-color); }
+        .book-cover { width: 100%; height: 120px; background: var(--primary-light); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
+        .book-emoji { font-size: 48px; }
+        .book-title { font-size: 18px; margin: 0 0 8px; color: var(--text-color); }
+        .book-author { font-size: 14px; color: var(--text-secondary); margin: 0 0 12px; }
+        .book-meta { display: flex; gap: 8px; margin-bottom: 12px; }
+        .book-category { font-size: 12px; padding: 4px 8px; background: var(--tag-bg); border-radius: 4px; color: var(--text-secondary); }
+        .book-status { font-size: 12px; padding: 4px 8px; border-radius: 4px; }
+        .book-status.want { background: #e3f2fd; color: #1976d2; }
+        .book-status.reading { background: #fff3e0; color: #f57c00; }
+        .book-status.done { background: #e8f5e9; color: #388e3c; }
+        .book-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+        .tag { font-size: 11px; padding: 3px 8px; background: var(--primary-light); color: var(--primary-color); border-radius: 12px; }
+        .book-progress { display: flex; align-items: center; gap: 8px; }
+        .progress-bar { flex: 1; height: 6px; background: var(--border-color); border-radius: 3px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--primary-color); transition: width 0.3s; }
+        .progress-text { font-size: 12px; color: var(--text-secondary); min-width: 36px; }
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
+        .book-edit { max-width: 800px; }
+        .book-edit h1 { font-size: 24px; margin: 0 0 30px; }
+        .edit-form { display: flex; flex-direction: column; gap: 30px; }
+        .form-section { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; }
+        .form-section h2 { font-size: 16px; margin: 0 0 20px; color: var(--primary-color); }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-size: 14px; color: var(--text-secondary); margin-bottom: 8px; }
+        .form-group input[type="text"], .form-group input[type="date"], .form-group select, .form-group textarea { width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--input-bg); color: var(--text-color); font-size: 14px; font-family: inherit; box-sizing: border-box; }
+        .form-row { display: flex; gap: 20px; }
+        .form-row .form-group { flex: 1; }
+        .progress-input { display: flex; align-items: center; gap: 12px; }
+        .progress-input input[type="range"] { flex: 1; }
+        .tags-display { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .tag { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: var(--primary-light); color: var(--primary-color); border-radius: 12px; font-size: 12px; }
+        .tag button { background: none; border: none; cursor: pointer; color: var(--primary-color); padding: 0; font-size: 14px; line-height: 1; }
+        .form-actions { display: flex; gap: 12px; }
+        .btn-secondary { background: var(--tag-bg); color: var(--text-color); }
+        .btn-danger { background: #ffebee; color: #c62828; }
+        .book-detail { max-width: 900px; }
+        .book-header { display: flex; gap: 30px; padding-bottom: 30px; border-bottom: 1px solid var(--border-color); margin-bottom: 30px; }
+        .book-cover-large { width: 180px; height: 240px; background: var(--primary-light); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .book-info h1 { font-size: 28px; margin: 0 0 8px; }
+        .author { font-size: 16px; color: var(--text-secondary); margin: 0 0 16px; }
+        .meta-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+        .category { font-size: 12px; padding: 4px 12px; background: var(--tag-bg); border-radius: 4px; color: var(--text-secondary); }
+        .status-badge { font-size: 12px; padding: 4px 12px; border-radius: 4px; }
+        .status-badge.want { background: #e3f2fd; color: #1976d2; }
+        .status-badge.reading { background: #fff3e0; color: #f57c00; }
+        .status-badge.done { background: #e8f5e9; color: #388e3c; }
+        .progress-section { margin-bottom: 20px; }
+        .progress-section label { font-size: 14px; color: var(--text-secondary); display: block; margin-bottom: 8px; }
+        .progress-control { display: flex; align-items: center; gap: 12px; }
+        .progress-control input[type="range"] { flex: 1; max-width: 200px; }
+        .note-section { display: flex; flex-direction: column; gap: 30px; }
+        .section h2 { font-size: 18px; margin: 0 0 16px; color: var(--primary-color); }
+        .content { line-height: 1.8; white-space: pre-wrap; color: var(--text-color); }
+        .empty-note { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
+        .notes-list, .categories-manage, .tags-manage, .search-result { max-width: 1000px; }
+        .notes-list h1, .categories-manage h1, .tags-manage h1, .search-result h1 { font-size: 24px; margin: 0 0 24px; }
+        .notes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .note-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.2s; }
+        .note-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px var(--shadow-color); }
+        .note-card h3 { font-size: 16px; margin: 0 0 8px; color: var(--text-color); }
+        .note-preview { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 12px; }
+        .note-meta { display: flex; justify-content: space-between; align-items: center; }
+        .date { font-size: 12px; color: var(--text-secondary); }
+        .add-form { display: flex; gap: 12px; margin-bottom: 24px; }
+        .add-form input { flex: 1; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--input-bg); color: var(--text-color); font-size: 14px; }
+        .categories-list { display: flex; flex-direction: column; gap: 8px; }
+        .category-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; }
+        .category-name { font-size: 14px; }
+        .category-actions { display: flex; gap: 8px; }
+        .btn-small { padding: 6px 12px; font-size: 12px; }
+        .btn-danger.btn-small { background: #ffebee; color: #c62828; }
+        .tags-cloud { display: flex; flex-wrap: wrap; gap: 12px; }
+        .tag-item { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; background: var(--primary-light); color: var(--primary-color); border-radius: 20px; font-size: 14px; }
+        .btn-delete { background: none; border: none; cursor: pointer; color: var(--primary-color); font-size: 18px; padding: 0; line-height: 1; opacity: 0.7; }
+        .btn-delete:hover { opacity: 1; }
+        .results-count { font-size: 14px; color: var(--text-secondary); margin-bottom: 24px; }
+        .results-list { display: flex; flex-direction: column; gap: 16px; }
+        .result-item { padding: 20px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; cursor: pointer; transition: all 0.2s; }
+        .result-item:hover { border-color: var(--primary-color); box-shadow: 0 4px 12px var(--shadow-color); }
+        .result-item h3 { font-size: 18px; margin: 0 0 8px; }
+        .result-item .author { font-size: 14px; color: var(--text-secondary); margin: 0 0 12px; }
+        .result-meta { display: flex; gap: 12px; }
+        .result-item .category { font-size: 12px; padding: 4px 10px; background: var(--tag-bg); border-radius: 4px; color: var(--text-secondary); }
+        .result-item .status-badge { font-size: 12px; padding: 4px 10px; border-radius: 4px; }
+        .result-item .status-badge.want { background: #e3f2fd; color: #1976d2; }
+        .result-item .status-badge.reading { background: #fff3e0; color: #f57c00; }
+        .result-item .status-badge.done { background: #e8f5e9; color: #388e3c; }
+        @media (max-width: 768px) {
+            .sidebar { width: 200px; }
+            .main-content { margin-left: 200px; }
+            .header { padding: 16px 20px; flex-direction: column; gap: 12px; }
+            .search-box { max-width: 100%; width: 100%; }
+            .content-area { padding: 20px; }
+            .book-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 480px) {
+            .sidebar { position: relative; width: 100%; height: auto; flex-direction: row; padding: 10px; overflow-x: auto; }
+            .logo { padding: 0 16px 0 0; }
+            .logo h1 { font-size: 18px; }
+            .logo .subtitle { display: none; }
+            .nav { flex-direction: row; display: flex; }
+            .nav-item { padding: 8px 12px; font-size: 14px; }
+            .nav-item .icon { margin-right: 4px; }
+            .sidebar-footer { border-top: none; padding-top: 0; border-left: 1px solid var(--border-color); padding-left: 16px; }
+            .theme-toggle { width: auto; padding: 8px 12px; }
+            .main-content { margin-left: 0; }
+            .content-area { padding: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+    <script>
+        const { createApp, ref, computed, onMounted, reactive } = Vue;
+        const { createRouter, createWebHashHistory } = VueRouter;
+
+        const storage = {
+            get(key) {
+                try { return JSON.parse(localStorage.getItem(key)); }
+                catch { return null; }
+            },
+            set(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+        };
+
+        if (!storage.get('books')) storage.set('books', []);
+        if (!storage.get('categories')) storage.set('categories', [{ id: 1, name: '未分类' }]);
+        if (!storage.get('tags')) storage.set('tags', []);
+
+        const Home = {
+            template: `
+                <div class="home">
+                    <div class="filters">
+                        <div class="filter-group">
+                            <select v-model="selectedCategory" class="filter-select" @change="filterBooks">
+                                <option value="">全部分类</option>
+                                <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+                            </select>
+                            <select v-model="selectedStatus" class="filter-select" @change="filterBooks">
+                                <option value="">全部状态</option>
+                                <option value="want">想读</option>
+                                <option value="reading">在读</option>
+                                <option value="done">已读</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="book-grid">
+                        <div v-for="book in filteredBooks" :key="book.id" class="book-card" @click="goToBook(book.id)">
+                            <div class="book-cover"><span class="book-emoji">📖</span></div>
+                            <div class="book-info">
+                                <h3 class="book-title">{{ book.title }}</h3>
+                                <p class="book-author">{{ book.author || '未知作者' }}</p>
+                                <div class="book-meta">
+                                    <span class="book-category">{{ getCategoryName(book.category_id) }}</span>
+                                    <span class="book-status" :class="book.status">{{ statusText(book.status) }}</span>
+                                </div>
+                                <div class="book-tags" v-if="book.tags && book.tags.length">
+                                    <span class="tag" v-for="tag in book.tags" :key="tag">{{ tag }}</span>
+                                </div>
+                                <div class="book-progress" v-if="book.status === 'reading'">
+                                    <div class="progress-bar"><div class="progress-fill" :style="{ width: book.progress + '%' }"></div></div>
+                                    <span class="progress-text">{{ book.progress }}%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-if="filteredBooks.length === 0" class="empty-state">
+                        <p>还没有书籍，点击右上角"新建书籍"开始添加</p>
+                    </div>
+                </div>
+            `,
+            setup() {
+                const books = ref(storage.get('books') || []);
+                const categories = ref(storage.get('categories') || []);
+                const selectedCategory = ref('');
+                const selectedStatus = ref('');
+
+                const filteredBooks = computed(() => {
+                    return books.value.filter(book => {
+                        if (selectedCategory.value && book.category_id != selectedCategory.value) return false;
+                        if (selectedStatus.value && book.status !== selectedStatus.value) return false;
+                        return true;
+                    });
+                });
+
+                function getCategoryName(id) {
+                    const cat = categories.value.find(c => c.id === id);
+                    return cat ? cat.name : '未分类';
+                }
+
+                function statusText(status) {
+                    const map = { want: '想读', reading: '在读', done: '已读' };
+                    return map[status] || status;
+                }
+
+                function goToBook(id) { router.push('/books/' + id); }
+                function filterBooks() {}
+
+                return { books, categories, selectedCategory, selectedStatus, filteredBooks, getCategoryName, statusText, goToBook, filterBooks };
+            }
+        };
+
+        const BookDetail = {
+            template: `
+                <div class="book-detail" v-if="book">
+                    <div class="book-header">
+                        <div class="book-cover-large"><span class="book-emoji">📖</span></div>
+                        <div class="book-info">
+                            <h1>{{ book.title }}</h1>
+                            <p class="author">{{ book.author || '未知作者' }}</p>
+                            <div class="meta-tags">
+                                <span class="category">{{ getCategoryName(book.category_id) }}</span>
+                                <span class="status-badge" :class="book.status">{{ statusText(book.status) }}</span>
+                                <span class="tag" v-for="tag in book.tags" :key="tag">{{ tag }}</span>
+                            </div>
+                            <div class="progress-section" v-if="book.status === 'reading'">
+                                <label>阅读进度</label>
+                                <div class="progress-control">
+                                    <input type="range" min="0" max="100" :value="book.progress" @input="updateProgress" />
+                                    <span>{{ book.progress }}%</span>
+                                </div>
+                            </div>
+                            <div class="actions">
+                                <router-link :to="'/books/' + book.id + '/edit'" class="btn btn-primary">编辑</router-link>
+                                <button class="btn btn-secondary" @click="exportPdf">导出PDF</button>
+                                <button class="btn btn-danger" @click="deleteBook">删除</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="note-section" v-if="book.note">
+                        <div class="section" v-if="book.note.excerpts"><h2>金句摘录</h2><div class="content">{{ book.note.excerpts }}</div></div>
+                        <div class="section" v-if="book.note.reflections"><h2>读后感</h2><div class="content">{{ book.note.reflections }}</div></div>
+                        <div class="section" v-if="book.note.content"><h2>笔记内容</h2><div class="content">{{ book.note.content }}</div></div>
+                    </div>
+                    <div v-else class="empty-note">
+                        <p>还没有笔记内容</p>
+                        <router-link :to="'/books/' + book.id + '/edit'" class="btn btn-primary">添加笔记</router-link>
+                    </div>
+                </div>
+            `,
+            setup() {
+                const books = ref(storage.get('books') || []);
+                const categories = ref(storage.get('categories') || []);
+                const route = window.location.hash.slice(1);
+                const bookId = parseInt(route.split('/books/')[1]);
+                const book = ref(books.value.find(b => b.id === bookId) || null);
+
+                function getCategoryName(id) {
+                    const cat = categories.value.find(c => c.id === id);
+                    return cat ? cat.name : '未分类';
+                }
+
+                function statusText(status) {
+                    const map = { want: '想读', reading: '在读', done: '已读' };
+                    return map[status] || status;
+                }
+
+                function updateProgress(e) {
+                    const progress = parseInt(e.target.value);
+                    book.value.progress = progress;
+                    const idx = books.value.findIndex(b => b.id === book.value.id);
+                    if (idx > -1) { books.value[idx] = book.value; storage.set('books', books.value); }
+                }
+
+                function exportPdf() { alert('PDF 导出功能已触发'); }
+
+                function deleteBook() {
+                    if (confirm('确定删除这本书吗？')) {
+                        const idx = books.value.findIndex(b => b.id === book.value.id);
+                        if (idx > -1) { books.value.splice(idx, 1); storage.set('books', books.value); router.push('/'); }
+                    }
+                }
+
+                return { book, getCategoryName, statusText, updateProgress, exportPdf, deleteBook };
+            }
+        };
+
+        const BookEdit = {
+            template: `
+                <div class="book-edit">
+                    <h1>{{ isNew ? '新建书籍' : '编辑书籍' }}</h1>
+                    <form @submit.prevent="saveBook" class="edit-form">
+                        <div class="form-section">
+                            <h2>基本信息</h2>
+                            <div class="form-group"><label>书名 *</label><input type="text" v-model="form.title" required placeholder="请输入书名" /></div>
+                            <div class="form-group"><label>作者</label><input type="text" v-model="form.author" placeholder="请输入作者" /></div>
+                            <div class="form-row">
+                                <div class="form-group"><label>分类</label><select v-model="form.category_id"><option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option></select></div>
+                                <div class="form-group"><label>阅读状态</label><select v-model="form.status"><option value="want">想读</option><option value="reading">在读</option><option value="done">已读</option></select></div>
+                            </div>
+                            <div class="form-row" v-if="form.status === 'reading'">
+                                <div class="form-group"><label>阅读进度</label><div class="progress-input"><input type="range" min="0" max="100" v-model="form.progress" /><span>{{ form.progress }}%</span></div></div>
+                            </div>
+                            <div class="form-group"><label>阅读日期</label><input type="date" v-model="form.read_date" /></div>
+                            <div class="form-group">
+                                <label>标签</label>
+                                <input type="text" v-model="tagInput" @keydown.enter.prevent="addTag" placeholder="输入标签后按回车添加" />
+                                <div class="tags-display"><span class="tag" v-for="(tag, index) in form.tags" :key="index">{{ tag }}<button type="button" @click="removeTag(index)">×</button></span></div>
+                            </div>
+                        </div>
+                        <div class="form-section">
+                            <h2>笔记内容</h2>
+                            <div class="form-group"><label>金句摘录</label><textarea v-model="form.note.excerpts" rows="5" placeholder="记录书中的精彩段落..."></textarea></div>
+                            <div class="form-group"><label>读后感</label><textarea v-model="form.note.reflections" rows="5" placeholder="写下你的感想和心得..."></textarea></div>
+                            <div class="form-group"><label>笔记整理</label><textarea v-model="form.note.content" rows="10" placeholder="整理书籍的核心内容和笔记..."></textarea></div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">{{ isNew ? '创建' : '保存' }}</button>
+                            <button type="button" class="btn btn-secondary" @click="goBack">取消</button>
+                        </div>
+                    </form>
+                </div>
+            `,
+            setup() {
+                const books = ref(storage.get('books') || []);
+                const categories = ref(storage.get('categories') || []);
+                const route = window.location.hash.slice(1);
+                const bookId = route.includes('/edit') ? parseInt(route.split('/books/')[1].split('/')[0]) : null;
+                const isNew = !bookId;
+
+                const form = reactive({
+                    title: '', author: '', category_id: 1, status: 'want', progress: 0, read_date: '', tags: [],
+                    note: { excerpts: '', reflections: '', content: '' }
+                });
+
+                const tagInput = ref('');
+
+                onMounted(() => {
+                    if (!isNew.value) {
+                        const book = books.value.find(b => b.id === bookId);
+                        if (book) {
+                            Object.assign(form, book);
+                            if (book.note) Object.assign(form.note, book.note);
+                        }
+                    }
+                });
+
+                function addTag() {
+                    const tag = tagInput.value.trim();
+                    if (tag && !form.tags.includes(tag)) form.tags.push(tag);
+                    tagInput.value = '';
+                }
+                function removeTag(index) { form.tags.splice(index, 1); }
+
+                function saveBook() {
+                    if (isNew) {
+                        const newBook = { id: Date.now(), ...form, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+                        books.value.push(newBook);
+                    } else {
+                        const idx = books.value.findIndex(b => b.id === bookId);
+                        if (idx > -1) { books.value[idx] = { ...books.value[idx], ...form, updated_at: new Date().toISOString() }; }
+                    }
+                    storage.set('books', books.value);
+                    router.push(isNew ? '/' : '/books/' + bookId);
+                }
+                function goBack() { window.history.back(); }
+
+                return { isNew, form, tagInput, categories, addTag, removeTag, saveBook, goBack };
+            }
+        };
+
+        const NotesList = {
+            template: `
+                <div class="notes-list">
+                    <h1>所有笔记</h1>
+                    <div class="notes-grid">
+                        <div v-for="book in booksWithNotes" :key="book.id" class="note-card" @click="goToBook(book.id)">
+                            <h3>{{ book.title }}</h3>
+                            <p class="author">{{ book.author }}</p>
+                            <div class="note-preview" v-if="book.note">
+                                <p v-if="book.note.excerpts">{{ truncate(book.note.excerpts) }}</p>
+                                <p v-else-if="book.note.reflections">{{ truncate(book.note.reflections) }}</p>
+                                <p v-else-if="book.note.content">{{ truncate(book.note.content) }}</p>
+                            </div>
+                            <div class="note-meta">
+                                <span class="date">{{ formatDate(book.updated_at) }}</span>
+                                <span class="status-badge" :class="book.status">{{ statusText(book.status) }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-if="booksWithNotes.length === 0" class="empty-state"><p>还没有笔记内容</p></div>
+                </div>
+            `,
+            setup() {
+                const books = ref(storage.get('books') || []);
+                const booksWithNotes = computed(() => books.value.filter(book => book.note && (book.note.content || book.note.excerpts || book.note.reflections)));
+
+                function truncate(text, length = 100) { return text && text.length > length ? text.substring(0, length) + '...' : text || ''; }
+                function formatDate(date) { return date ? new Date(date).toLocaleDateString('zh-CN') : ''; }
+                function statusText(status) { const map = { want: '想读', reading: '在读', done: '已读' }; return map[status] || status; }
+                function goToBook(id) { router.push('/books/' + id); }
+
+                return { booksWithNotes, truncate, formatDate, statusText, goToBook };
+            }
+        };
+
+        const CategoriesManage = {
+            template: `
+                <div class="categories-manage">
+                    <h1>分类管理</h1>
+                    <div class="add-form">
+                        <input type="text" v-model="newCategoryName" placeholder="新分类名称" @keydown.enter="addCategory" />
+                        <button class="btn btn-primary" @click="addCategory">添加分类</button>
+                    </div>
+                    <div class="categories-list">
+                        <div v-for="cat in categories" :key="cat.id" class="category-item">
+                            <span class="category-name">{{ cat.name }}</span>
+                            <div class="category-actions">
+                                <button class="btn btn-small" @click="editCategory(cat)">编辑</button>
+                                <button class="btn btn-small btn-danger" @click="deleteCategory(cat.id)" :disabled="cat.id === 1">删除</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `,
+            setup() {
+                const categories = ref(storage.get('categories') || []);
+                const newCategoryName = ref('');
+
+                function addCategory() {
+                    if (!newCategoryName.value.trim()) return;
+                    categories.value.push({ id: Date.now(), name: newCategoryName.value });
+                    storage.set('categories', categories.value);
+                    newCategoryName.value = '';
+                }
+
+                function editCategory(cat) {
+                    const newName = prompt('请输入新的分类名称:', cat.name);
+                    if (newName) { cat.name = newName; storage.set('categories', categories.value); }
+                }
+
+                function deleteCategory(id) {
+                    if (id === 1) return;
+                    if (confirm('确定删除该分类吗？')) {
+                        const idx = categories.value.findIndex(c => c.id === id);
+                        if (idx > -1) { categories.value.splice(idx, 1); storage.set('categories', categories.value); }
+                    }
+                }
+
+                return { categories, newCategoryName, addCategory, editCategory, deleteCategory };
+            }
+        };
+
+        const TagsManage = {
+            template: `
+                <div class="tags-manage">
+                    <h1>标签管理</h1>
+                    <div class="add-form">
+                        <input type="text" v-model="newTagName" placeholder="新标签名称" @keydown.enter="addTag" />
+                        <button class="btn btn-primary" @click="addTag">添加标签</button>
+                    </div>
+                    <div class="tags-cloud">
+                        <div v-for="(tag, index) in tags" :key="index" class="tag-item">
+                            <span class="tag-name">{{ tag }}</span>
+                            <button class="btn-delete" @click="deleteTag(index)">×</button>
+                        </div>
+                    </div>
+                    <div v-if="tags.length === 0" class="empty-state"><p>还没有标签</p></div>
+                </div>
+            `,
+            setup() {
+                const tags = ref(storage.get('tags') || []);
+                const newTagName = ref('');
+
+                function addTag() {
+                    if (!newTagName.value.trim()) return;
+                    if (!tags.value.includes(newTagName.value)) {
+                        tags.value.push(newTagName.value);
+                        storage.set('tags', tags.value);
+                    }
+                    newTagName.value = '';
+                }
+
+                function deleteTag(index) {
+                    if (confirm('确定删除该标签吗？')) {
+                        tags.value.splice(index, 1);
+                        storage.set('tags', tags.value);
+                    }
+                }
+
+                return { tags, newTagName, addTag, deleteTag };
+            }
+        };
+
+        const SearchResult = {
+            template: `
+                <div class="search-result">
+                    <h1>搜索结果: "{{ keyword }}"</h1>
+                    <div class="results-count" v-if="results.length">找到 {{ results.length }} 个结果</div>
+                    <div class="results-list">
+                        <div v-for="book in results" :key="book.id" class="result-item" @click="goToBook(book.id)">
+                            <h3>{{ book.title }}</h3>
+                            <p class="author">{{ book.author || '未知作者' }}</p>
+                            <div class="result-meta">
+                                <span class="category">{{ getCategoryName(book.category_id) }}</span>
+                                <span class="status-badge" :class="book.status">{{ statusText(book.status) }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-if="results.length === 0" class="empty-state"><p>没有找到匹配的结果</p></div>
+                </div>
+            `,
+            setup() {
+                const books = ref(storage.get('books') || []);
+                const categories = ref(storage.get('categories') || []);
+                const params = new URLSearchParams(window.location.hash.split('?')[1] || '');
+                const keyword = ref(params.get('q') || '');
+                const results = ref([]);
+
+                onMounted(() => { search(); });
+
+                function search() {
+                    if (!keyword.value.trim()) { results.value = []; return; }
+                    const k = keyword.value.toLowerCase();
+                    results.value = books.value.filter(book =>
+                        book.title?.toLowerCase().includes(k) ||
+                        book.author?.toLowerCase().includes(k) ||
+                        book.note?.content?.toLowerCase().includes(k) ||
+                        book.note?.excerpts?.toLowerCase().includes(k)
+                    );
+                }
+
+                function getCategoryName(id) { const cat = categories.value.find(c => c.id === id); return cat ? cat.name : '未分类'; }
+                function statusText(status) { const map = { want: '想读', reading: '在读', done: '已读' }; return map[status] || status; }
+                function goToBook(id) { router.push('/books/' + id); }
+
+                return { keyword, results, getCategoryName, statusText, goToBook };
+            }
+        };
+
+        const routes = [
+            { path: '/', component: Home },
+            { path: '/books/new', component: BookEdit },
+            { path: '/books/:id', component: BookDetail },
+            { path: '/books/:id/edit', component: BookEdit },
+            { path: '/notes', component: NotesList },
+            { path: '/categories', component: CategoriesManage },
+            { path: '/tags', component: TagsManage },
+            { path: '/search', component: SearchResult }
+        ];
+
+        const router = createRouter({ history: createWebHashHistory(), routes });
+
+        const App = {
+            template: `
+                <div class="app" :class="{ dark: isDark }">
+                    <div class="layout">
+                        <aside class="sidebar">
+                            <div class="logo"><h1>BNotes</h1><span class="subtitle">读书笔记</span></div>
+                            <nav class="nav">
+                                <router-link to="/" class="nav-item" :class="{ active: $route.path === '/' }"><span class="icon">📚</span><span>书架</span></router-link>
+                                <router-link to="/notes" class="nav-item" :class="{ active: $route.path === '/notes' }"><span class="icon">📝</span><span>笔记</span></router-link>
+                                <router-link to="/categories" class="nav-item" :class="{ active: $route.path === '/categories' }"><span class="icon">📁</span><span>分类</span></router-link>
+                                <router-link to="/tags" class="nav-item" :class="{ active: $route.path === '/tags' }"><span class="icon">🏷️</span><span>标签</span></router-link>
+                            </nav>
+                            <div class="sidebar-footer">
+                                <button class="theme-toggle" @click="toggleTheme" title="切换主题"><span>{{ isDark ? '☀️' : '🌙' }}</span></button>
+                            </div>
+                        </aside>
+                        <main class="main-content">
+                            <header class="header">
+                                <div class="search-box">
+                                    <input type="text" class="search-input" placeholder="搜索书籍、笔记... (Ctrl+F)" v-model="searchKeyword" @input="handleSearch" />
+                                </div>
+                                <div class="header-actions">
+                                    <router-link to="/books/new" class="btn btn-primary"><span>+</span> 新建书籍</router-link>
+                                </div>
+                            </header>
+                            <div class="content-area"><router-view /></div>
+                        </main>
+                    </div>
+                </div>
+            `,
+            setup() {
+                const searchKeyword = ref('');
+                const isDark = ref(false);
+
+                onMounted(() => {
+                    const savedTheme = localStorage.getItem('theme');
+                    if (savedTheme === 'dark') { isDark.value = true; document.documentElement.classList.add('dark'); }
+                    document.addEventListener('keydown', handleGlobalKeydown);
+                });
+
+                function handleGlobalKeydown(e) {
+                    if (e.ctrlKey || e.metaKey) {
+                        if (e.key === 'n') { e.preventDefault(); router.push('/books/new'); }
+                        else if (e.key === 'f') { e.preventDefault(); document.querySelector('.search-input')?.focus(); }
+                    }
+                }
+
+                function handleSearch() {
+                    if (searchKeyword.value.trim()) router.push({ path: '/search', query: { q: searchKeyword.value } });
+                    else router.push('/');
+                }
+
+                function toggleTheme() {
+                    isDark.value = !isDark.value;
+                    localStorage.setItem('theme', isDark.value ? 'dark' : 'light');
+                    document.documentElement.classList.toggle('dark');
+                }
+
+                return { searchKeyword, isDark, handleSearch, toggleTheme };
+            }
+        };
+
+        createApp(App).use(router).mount('#app');
+    </script>
+</body>
+</html>
