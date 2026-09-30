@@ -9,6 +9,14 @@
       <button class="tab-btn" :class="{ active: activeTab === 'import' }" @click="activeTab = 'import'">
         导入
       </button>
+      <button
+        v-if="isDesktop"
+        class="tab-btn"
+        :class="{ active: activeTab === 'backup' }"
+        @click="activeTab = 'backup'; loadBackups()"
+      >
+        备份与同步
+      </button>
     </div>
 
     <!-- 导出 Tab -->
@@ -199,6 +207,88 @@
         </div>
       </div>
     </div>
+
+    <!-- 备份与同步 Tab（仅桌面端） -->
+    <div v-if="activeTab === 'backup' && isDesktop" class="tab-content">
+      <!-- 自动备份说明 -->
+      <div class="backup-card">
+        <div class="card-header">
+          <h2>数据备份</h2>
+          <button class="btn btn-primary" :disabled="backingUp" @click="handleCreateBackup">
+            {{ backingUp ? '备份中...' : '立即备份' }}
+          </button>
+        </div>
+        <p class="backup-hint">
+          应用每次退出及每 24 小时自动备份，自动保留最近 10 份备份。
+        </p>
+
+        <div v-if="backups.length === 0" class="empty-tip">暂无备份记录</div>
+        <div v-else class="backup-list">
+          <div v-for="bk in backups" :key="bk.name" class="backup-item">
+            <div class="backup-info">
+              <span class="backup-name">{{ bk.name }}</span>
+              <span class="backup-meta">{{ formatSize(bk.size) }} · {{ formatTime(bk.mtime) }}</span>
+            </div>
+            <button
+              class="btn btn-sm btn-secondary"
+              :disabled="restoring"
+              @click="handleRestoreBackup(bk.name)"
+            >
+              恢复
+            </button>
+          </div>
+        </div>
+
+        <div v-if="backupMessage" class="message" :class="backupMessageType">{{ backupMessage }}</div>
+      </div>
+
+      <!-- WebDAV 同步 -->
+      <div class="sync-card">
+        <div class="card-header">
+          <h2>WebDAV 云同步</h2>
+        </div>
+        <p class="backup-hint">
+          通过 WebDAV（如坚果云、Nextcloud）将备份上传到云端，也可从云端拉取恢复。
+        </p>
+
+        <div class="sync-form">
+          <label class="sync-field">
+            <span class="sync-label">启用同步</span>
+            <input type="checkbox" v-model="syncForm.enabled" class="sync-checkbox" />
+          </label>
+          <label class="sync-field">
+            <span class="sync-label">WebDAV 地址</span>
+            <input
+              v-model="syncForm.url"
+              type="text"
+              placeholder="https://dav.jianguoyun.com/dav/"
+              class="sync-input"
+            />
+          </label>
+          <label class="sync-field">
+            <span class="sync-label">账号</span>
+            <input v-model="syncForm.username" type="text" class="sync-input" />
+          </label>
+          <label class="sync-field">
+            <span class="sync-label">密码</span>
+            <input v-model="syncForm.password" type="password" class="sync-input" />
+          </label>
+          <label class="sync-field">
+            <span class="sync-label">远端目录</span>
+            <input v-model="syncForm.remotePath" type="text" placeholder="/BNotes/" class="sync-input" />
+          </label>
+        </div>
+
+        <div class="sync-actions">
+          <button class="btn btn-secondary" :disabled="syncing" @click="handleSaveSync">保存配置</button>
+          <button class="btn btn-secondary" :disabled="testingSync" @click="handleTestSync">测试连接</button>
+          <button class="btn btn-primary" :disabled="syncing" @click="handlePushSync">上传到云端</button>
+          <button class="btn btn-primary" :disabled="syncing" @click="handlePullSync">从云端恢复</button>
+        </div>
+
+        <div v-if="syncMessage" class="message" :class="syncMessageType">{{ syncMessage }}</div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -225,8 +315,106 @@ const importing = ref(false)
 const importError = ref('')
 const importResult = ref(null)
 
+// 备份与同步状态（仅桌面端）
+const isDesktop = ref(!!bookStore.createBackup)
+const backups = ref([])
+const backingUp = ref(false)
+const restoring = ref(false)
+const backupMessage = ref('')
+const backupMessageType = ref('success')
+const syncForm = ref({ enabled: false, url: '', username: '', password: '', remotePath: '/BNotes/' })
+const syncing = ref(false)
+const testingSync = ref(false)
+const syncMessage = ref('')
+const syncMessageType = ref('success')
+
+async function loadBackups() {
+  backups.value = await bookStore.fetchBackups()
+}
+
+async function handleCreateBackup() {
+  backingUp.value = true
+  backupMessage.value = ''
+  const result = await bookStore.createBackup()
+  backupMessage.value = result.message || (result.code === 200 ? '备份成功' : '备份失败')
+  backupMessageType.value = result.code === 200 ? 'success' : 'error'
+  if (result.code === 200) await loadBackups()
+  backingUp.value = false
+}
+
+async function handleRestoreBackup(name) {
+  if (!confirm(`确定从备份 ${name} 恢复吗？当前数据将被覆盖。`)) return
+  restoring.value = true
+  backupMessage.value = ''
+  const result = await bookStore.restoreBackup(name)
+  backupMessage.value = result.message || '恢复失败'
+  backupMessageType.value = result.code === 200 ? 'success' : 'error'
+  restoring.value = false
+}
+
+async function loadSyncConfig() {
+  const cfg = await bookStore.getSyncConfig()
+  if (cfg) {
+    syncForm.value = { ...syncForm.value, ...cfg }
+  }
+}
+
+async function handleSaveSync() {
+  syncing.value = true
+  syncMessage.value = ''
+  const result = await bookStore.saveSyncConfig(syncForm.value)
+  syncMessage.value = result.message || (result.code === 200 ? '配置已保存' : '保存失败')
+  syncMessageType.value = result.code === 200 ? 'success' : 'error'
+  syncing.value = false
+}
+
+async function handleTestSync() {
+  testingSync.value = true
+  syncMessage.value = ''
+  const result = await bookStore.testSync(syncForm.value)
+  syncMessage.value = result.message || '测试失败'
+  syncMessageType.value = result.code === 200 ? 'success' : 'error'
+  testingSync.value = false
+}
+
+async function handlePushSync() {
+  syncing.value = true
+  syncMessage.value = ''
+  const result = await bookStore.pushSync()
+  syncMessage.value = result.message || '上传失败'
+  syncMessageType.value = result.code === 200 ? 'success' : 'error'
+  syncing.value = false
+}
+
+async function handlePullSync() {
+  if (!confirm('将从云端拉取最新备份并覆盖当前数据，确定继续吗？')) return
+  syncing.value = true
+  syncMessage.value = ''
+  const result = await bookStore.pullSync()
+  syncMessage.value = result.message || '拉取失败'
+  syncMessageType.value = result.code === 200 ? 'success' : 'error'
+  syncing.value = false
+}
+
+function formatSize(bytes) {
+  if (!bytes) return '0 B'
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / 1024 / 1024).toFixed(1) + ' MB'
+}
+
+function formatTime(iso) {
+  try {
+    const d = new Date(iso)
+    return d.toLocaleString('zh-CN', { hour12: false })
+  } catch (e) {
+    return iso
+  }
+}
+
 onMounted(() => {
   bookStore.fetchBooks()
+  if (isDesktop.value) loadSyncConfig()
 })
 
 function statusLabel(status) {
@@ -851,5 +1039,112 @@ function resetImport() {
   color: var(--text-secondary);
   font-size: 14px;
   text-align: center;
+}
+
+/* 备份与同步相关样式 */
+.backup-card,
+.sync-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.backup-hint {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+.backup-list {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.backup-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.backup-item:last-child {
+  border-bottom: none;
+}
+
+.backup-item:hover {
+  background: var(--hover-bg);
+}
+
+.backup-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.backup-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-color);
+  word-break: break-all;
+}
+
+.backup-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.sync-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.sync-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sync-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  width: 110px;
+  flex-shrink: 0;
+}
+
+.sync-input {
+  flex: 1;
+  padding: 9px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text-color);
+  font-size: 14px;
+}
+
+.sync-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.sync-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary-color);
+  cursor: pointer;
+}
+
+.sync-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 </style>

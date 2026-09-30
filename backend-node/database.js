@@ -20,6 +20,80 @@ if (!fs.existsSync(DB_PATH) && fs.existsSync(OLD_DB_PATH)) {
 let db = null
 let saveTimer = null
 
+// ========== 备份机制 ==========
+
+const BACKUP_DIR = path.join(DATA_DIR, 'backups')
+const MAX_BACKUPS = 10 // 保留最近 N 份
+const BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000 // 每 24 小时自动备份一次
+
+// 复制当前数据库文件为带时间戳的备份
+function backupDatabase() {
+  try {
+    if (!fs.existsSync(DB_PATH)) return null
+    if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true })
+
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+    const backupPath = path.join(BACKUP_DIR, `bnotes-${stamp}.db`)
+    fs.copyFileSync(DB_PATH, backupPath)
+
+    // 清理旧备份，只保留最近 MAX_BACKUPS 份
+    const files = fs.readdirSync(BACKUP_DIR)
+      .filter(f => f.startsWith('bnotes-') && f.endsWith('.db'))
+      .sort()
+    while (files.length > MAX_BACKUPS) {
+      const oldest = files.shift()
+      fs.unlinkSync(path.join(BACKUP_DIR, oldest))
+    }
+
+    console.log(`[BNotes] 已创建数据库备份: ${backupPath}`)
+    return backupPath
+  } catch (e) {
+    console.error('[BNotes] 备份失败:', e.message)
+    return null
+  }
+}
+
+// 列出所有备份文件
+function listBackups() {
+  try {
+    if (!fs.existsSync(BACKUP_DIR)) return []
+    return fs.readdirSync(BACKUP_DIR)
+      .filter(f => f.startsWith('bnotes-') && f.endsWith('.db'))
+      .sort()
+      .reverse()
+      .map(name => {
+        const stat = fs.statSync(path.join(BACKUP_DIR, name))
+        return { name, size: stat.size, mtime: stat.mtime.toISOString() }
+      })
+  } catch (e) {
+    console.error('[BNotes] 读取备份列表失败:', e.message)
+    return []
+  }
+}
+
+// 从指定备份文件恢复（先保存当前数据再覆盖，并重建内存数据库）
+function restoreBackup(name) {
+  const backupPath = path.join(BACKUP_DIR, name)
+  if (!fs.existsSync(backupPath)) throw new Error('备份文件不存在')
+
+  // 恢复前先备份当前数据库，防止恢复失败丢失数据
+  backupDatabase()
+  fs.copyFileSync(backupPath, DB_PATH)
+  console.log(`[BNotes] 已从备份恢复: ${backupPath}`)
+  return true
+}
+
+// 恢复后重建内存数据库实例（从磁盘重新加载）
+function reloadDatabase() {
+  const SQL = require('sql.js')
+  if (db) db.close()
+  const fileBuffer = fs.readFileSync(DB_PATH)
+  db = new SQL.Database(fileBuffer)
+  console.log(`[BNotes] 已重新加载数据库: ${DB_PATH}`)
+  scheduleSave()
+  return db
+}
+
 // 延迟保存（防抖，避免频繁写盘）
 function scheduleSave() {
   if (saveTimer) clearTimeout(saveTimer)
@@ -174,11 +248,12 @@ function run(sql, params = []) {
   }
 }
 
-// 进程退出时保存数据库
+// 进程退出时保存数据库并自动备份
 process.on('exit', () => {
   if (db) {
     const data = db.export()
     fs.writeFileSync(DB_PATH, Buffer.from(data))
+    backupDatabase()
   }
 })
 
@@ -186,8 +261,25 @@ process.on('SIGINT', () => {
   if (db) {
     const data = db.export()
     fs.writeFileSync(DB_PATH, Buffer.from(data))
+    backupDatabase()
   }
   process.exit(0)
 })
 
-module.exports = { initDatabase, queryAll, queryOne, run, scheduleSave, getDb: () => db }
+// 每日自动备份定时器（应用运行超过 24 小时也定期备份）
+setInterval(() => {
+  if (db) backupDatabase()
+}, BACKUP_INTERVAL_MS)
+
+module.exports = {
+  initDatabase,
+  queryAll,
+  queryOne,
+  run,
+  scheduleSave,
+  backupDatabase,
+  listBackups,
+  restoreBackup,
+  reloadDatabase,
+  getDb: () => db
+}

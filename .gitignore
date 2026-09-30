@@ -43,6 +43,3 @@ coverage/
 # 备份文件
 *.bak
 *.backup
-
-# 用户数据（数据库不应入库）
-data/

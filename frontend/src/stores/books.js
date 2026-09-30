@@ -332,6 +332,114 @@ export const useBookStore = defineStore('books', () => {
     }
   }
 
+  // ========== 备份与同步 API ==========
+
+  async function createBackup() {
+    try {
+      const res = await fetch(`${API_BASE}/backups`, { method: 'POST' })
+      return await res.json()
+    } catch (e) {
+      console.error('Failed to create backup:', e)
+      return { code: 500, message: e.message }
+    }
+  }
+
+  async function fetchBackups() {
+    try {
+      const res = await fetch(`${API_BASE}/backups`)
+      const data = await res.json()
+      return data.code === 200 ? data.data : []
+    } catch (e) {
+      console.error('Failed to fetch backups:', e)
+      return []
+    }
+  }
+
+  async function restoreBackup(name) {
+    try {
+      const res = await fetch(`${API_BASE}/backups/restore`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      })
+      const data = await res.json()
+      if (data.code === 200) {
+        await fetchBooks()
+        await fetchCategories()
+        await fetchTags()
+      }
+      return data
+    } catch (e) {
+      console.error('Failed to restore backup:', e)
+      return { code: 500, message: e.message }
+    }
+  }
+
+  async function getSyncConfig() {
+    try {
+      const res = await fetch(`${API_BASE}/sync/config`)
+      const data = await res.json()
+      return data.code === 200 ? data.data : null
+    } catch (e) {
+      console.error('Failed to get sync config:', e)
+      return null
+    }
+  }
+
+  async function saveSyncConfig(config) {
+    try {
+      const res = await fetch(`${API_BASE}/sync/config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+      })
+      return await res.json()
+    } catch (e) {
+      console.error('Failed to save sync config:', e)
+      return { code: 500, message: e.message }
+    }
+  }
+
+  async function testSync(config) {
+    try {
+      const res = await fetch(`${API_BASE}/sync/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+      })
+      return await res.json()
+    } catch (e) {
+      console.error('Failed to test sync:', e)
+      return { code: 500, message: e.message }
+    }
+  }
+
+  async function pushSync() {
+    try {
+      const res = await fetch(`${API_BASE}/sync/push`, { method: 'POST' })
+      return await res.json()
+    } catch (e) {
+      console.error('Failed to push sync:', e)
+      return { code: 500, message: e.message }
+    }
+  }
+
+  async function pullSync() {
+    try {
+      const res = await fetch(`${API_BASE}/sync/pull`, { method: 'POST' })
+      const data = await res.json()
+      if (data.code === 200) {
+        await fetchBooks()
+        await fetchCategories()
+        await fetchTags()
+      }
+      return data
+    } catch (e) {
+      console.error('Failed to pull sync:', e)
+      return { code: 500, message: e.message }
+    }
+  }
+
   return {
     books,
     categories,
@@ -361,6 +469,14 @@ export const useBookStore = defineStore('books', () => {
     getSetting,
     saveSetting,
     exportBnotes,
-    importBnotes
+    importBnotes,
+    createBackup,
+    fetchBackups,
+    restoreBackup,
+    getSyncConfig,
+    saveSyncConfig,
+    testSync,
+    pushSync,
+    pullSync
   }
 })

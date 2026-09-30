@@ -2,7 +2,7 @@ const express = require('express')
 const cors = require('cors')
 const path = require('path')
 const fs = require('fs')
-const { initDatabase, queryAll, queryOne, run } = require('./database')
+const { initDatabase, queryAll, queryOne, run, backupDatabase, listBackups, restoreBackup, reloadDatabase } = require('./database')
 
 const app = express()
 const PORT = process.env.BNOTES_PORT || 18765
@@ -803,6 +803,185 @@ app.post('/api/import/bnotes', (req, res) => {
     })
   } catch (e) {
     res.json({ code: 500, message: e.message })
+  }
+})
+
+// ========== 备份 API ==========
+
+// 手动创建备份
+app.post('/api/backups', (_req, res) => {
+  try {
+    const path = backupDatabase()
+    if (!path) return res.json({ code: 500, message: '备份失败' })
+    res.json({ code: 200, message: '备份成功', backup: path })
+  } catch (e) {
+    res.json({ code: 500, message: e.message })
+  }
+})
+
+// 列出备份
+app.get('/api/backups', (_req, res) => {
+  try {
+    res.json({ code: 200, data: listBackups() })
+  } catch (e) {
+    res.json({ code: 500, message: e.message })
+  }
+})
+
+// 恢复备份（按文件名）
+app.post('/api/backups/restore', (req, res) => {
+  try {
+    const { name } = req.body
+    if (!name) return res.json({ code: 400, message: '缺少备份文件名' })
+    restoreBackup(name)
+    reloadDatabase()
+    res.json({ code: 200, message: '恢复成功' })
+  } catch (e) {
+    res.json({ code: 500, message: e.message })
+  }
+})
+
+// ========== WebDAV 同步 API ==========
+
+// 读取同步配置
+app.get('/api/sync/config', (_req, res) => {
+  try {
+    const row = queryOne('SELECT value FROM settings WHERE key = ?', ['webdav_sync'])
+    res.json({
+      code: 200,
+      data: row ? JSON.parse(row.value || '{}') : {
+        enabled: false,
+        url: '',
+        username: '',
+        password: '',
+        remotePath: '/BNotes/'
+      }
+    })
+  } catch (e) {
+    res.json({ code: 500, message: e.message })
+  }
+})
+
+// 保存同步配置
+app.post('/api/sync/config', (req, res) => {
+  try {
+    const { enabled, url, username, password, remotePath } = req.body
+    const config = { enabled: !!enabled, url: url || '', username: username || '', password: password || '', remotePath: remotePath || '/BNotes/' }
+    run("INSERT OR REPLACE INTO settings (key, value) VALUES ('webdav_sync', ?)", [JSON.stringify(config)])
+    res.json({ code: 200, message: '同步配置已保存' })
+  } catch (e) {
+    res.json({ code: 500, message: e.message })
+  }
+})
+
+// WebDAV 基础请求（封装 PUT/GET/PROPFIND 所需头）
+async function webdavRequest(url, username, password, method, body, extraHeaders = {}) {
+  const headers = {
+    'Authorization': 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64'),
+    ...extraHeaders
+  }
+  const res = await fetch(url, { method, headers, body })
+  return res
+}
+
+// 测试 WebDAV 连接
+app.post('/api/sync/test', async (req, res) => {
+  try {
+    const { url, username, password } = req.body
+    if (!url) return res.json({ code: 400, message: '请输入 WebDAV 地址' })
+    // 用 PROPFIND 探测根路径
+    const base = url.endsWith('/') ? url : url + '/'
+    const resp = await webdavRequest(base, username, password, 'PROPFIND', null, {
+      'Content-Length': '0',
+      'Depth': '0'
+    })
+    if (resp.ok || resp.status === 401) {
+      if (resp.status === 401) return res.json({ code: 401, message: '认证失败，请检查账号密码' })
+      return res.json({ code: 200, message: '连接成功' })
+    }
+    res.json({ code: resp.status, message: `连接失败 (HTTP ${resp.status})` })
+  } catch (e) {
+    res.json({ code: 500, message: '连接失败：' + e.message })
+  }
+})
+
+// 上传数据库备份到 WebDAV
+app.post('/api/sync/push', async (req, res) => {
+  try {
+    const cfgRow = queryOne('SELECT value FROM settings WHERE key = ?', ['webdav_sync'])
+    const cfg = cfgRow ? JSON.parse(cfgRow.value || '{}') : null
+    if (!cfg || !cfg.enabled || !cfg.url) return res.json({ code: 400, message: '未启用同步或配置不完整' })
+
+    // 生成当前数据库文件的备份并上传
+    const backupPath = backupDatabase()
+    if (!backupPath) return res.json({ code: 500, message: '备份失败' })
+    const fileName = path.basename(backupPath)
+    const remotePath = (cfg.remotePath || '/BNotes/').replace(/\/$/, '') + '/' + fileName
+    const data = fs.readFileSync(backupPath)
+
+    const resp = await webdavRequest(cfg.url + remotePath, cfg.username, cfg.password, 'PUT', data, {
+      'Content-Type': 'application/octet-stream',
+      'Content-Length': String(data.length)
+    })
+    if (resp.ok) {
+      res.json({ code: 200, message: '上传成功', remote: remotePath })
+    } else {
+      res.json({ code: resp.status, message: `上传失败 (HTTP ${resp.status})` })
+    }
+  } catch (e) {
+    res.json({ code: 500, message: '上传失败：' + e.message })
+  }
+})
+
+// 从 WebDAV 拉取最新备份并恢复
+app.post('/api/sync/pull', async (req, res) => {
+  try {
+    const cfgRow = queryOne('SELECT value FROM settings WHERE key = ?', ['webdav_sync'])
+    const cfg = cfgRow ? JSON.parse(cfgRow.value || '{}') : null
+    if (!cfg || !cfg.enabled || !cfg.url) return res.json({ code: 400, message: '未启用同步或配置不完整' })
+
+    // PROPFIND 列出远端目录，找最新的 .db 文件
+    const base = cfg.url.replace(/\/$/, '')
+    const remoteDir = (cfg.remotePath || '/BNotes/').replace(/\/$/, '') + '/'
+    const resp = await webdavRequest(base + remoteDir, cfg.username, cfg.password, 'PROPFIND', null, {
+      'Content-Length': '0',
+      'Depth': '1'
+    })
+    if (!resp.ok) return res.json({ code: resp.status, message: `列出远端失败 (HTTP ${resp.status})` })
+
+    // 解析 PROPFIND XML 中的资源 href 与修改时间
+    const text = await resp.text()
+    const hrefs = [...text.matchAll(/<D:href>([^<]+)<\/D:href>|<d:href>([^<]+)<\/d:href>/g)]
+      .map(m => (m[1] || m[2]).trim())
+      .filter(h => h.endsWith('.db'))
+    if (hrefs.length === 0) return res.json({ code: 404, message: '远端没有备份文件' })
+
+    const lastmods = [...text.matchAll(/<D:getlastmodified>([^<]+)<\/D:getlastmodified>|<d:getlastmodified>([^<]+)<\/d:getlastmodified>/g)]
+      .map(m => (m[1] || m[2]).trim())
+
+    // 取最新文件（若解析不到时间则取最后一个）
+    let target = hrefs[hrefs.length - 1]
+    if (lastmods.length === hrefs.length) {
+      const newest = lastmods
+        .map((t, i) => ({ t: new Date(t).getTime(), h: hrefs[i] }))
+        .sort((a, b) => b.t - a.t)[0]
+      target = newest.h
+    }
+
+    const remoteFile = target.startsWith('http') ? target : base + target
+    const dl = await webdavRequest(remoteFile, cfg.username, cfg.password, 'GET')
+    if (!dl.ok) return res.json({ code: dl.status, message: `下载失败 (HTTP ${dl.status})` })
+
+    // 写入临时文件后恢复（restoreBackup 只接受 backups 目录内文件，先落盘）
+    const buffer = Buffer.from(await dl.arrayBuffer())
+    const tempName = 'sync-restore-' + path.basename(target)
+    const tempPath = path.join(__dirname, '..', 'data', 'backups', tempName)
+    fs.writeFileSync(tempPath, buffer)
+    restoreBackup(tempName)
+    reloadDatabase()
+    res.json({ code: 200, message: `已恢复远端备份: ${path.basename(target)}` })
+  } catch (e) {
+    res.json({ code: 500, message: '拉取失败：' + e.message })
   }
 })
 
