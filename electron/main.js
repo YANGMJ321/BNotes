@@ -117,7 +117,7 @@ function createWindow() {
                     label: '导出',
                     accelerator: 'CmdOrCtrl+E',
                     click: () => {
-                        mainWindow.webContents.send('export-pdf');
+                        mainWindow.loadURL(`http://localhost:${SERVER_PORT}/#/import-export`);
                     }
                 },
                 { type: 'separator' },
@@ -165,7 +165,7 @@ function createWindow() {
                             type: 'info',
                             title: '关于 BNotes',
                             message: 'BNotes - 读书笔记管理系统',
-                            detail: '版本: 1.4.0\n一个简洁高效的读书笔记管理工具'
+                            detail: '版本: 1.6.0\n一个简洁高效的读书笔记管理工具'
                         });
                     }
                 }

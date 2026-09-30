@@ -1,6 +1,6 @@
 {
   "name": "shuji-mobile",
-  "version": "1.4.0",
+  "version": "1.6.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -17,6 +17,7 @@
     "pinia": "^2.1.0",
     "sql.js": "^1.10.0",
     "jszip": "^3.10.0",
+    "jspdf": "^2.5.1",
     "@capacitor/core": "^6.0.0",
     "@capacitor/filesystem": "^6.0.0",
     "@capacitor/share": "^6.0.0"

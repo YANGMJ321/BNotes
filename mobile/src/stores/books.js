@@ -609,12 +609,33 @@ export const useBookStore = defineStore('books', () => {
       const dateStr = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')
       zip.file(`bnotes-export-${dateStr}.json`, JSON.stringify(exportData, null, 2))
       const zipBlob = await zip.generateAsync({ type: 'blob' })
-      const url = URL.createObjectURL(zipBlob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `书记导出-${dateStr}.zip`
-      a.click()
-      URL.revokeObjectURL(url)
+      const zipBytes = new Uint8Array(await zipBlob.arrayBuffer())
+      const filename = `书记导出-${dateStr}.zip`
+
+      // 原生平台使用 Capacitor 分享，Web 平台降级为浏览器下载
+      const Capacitor = (await import('@capacitor/core')).Capacitor
+      if (Capacitor.isNativePlatform()) {
+        const { Filesystem, Directory } = await import('@capacitor/filesystem')
+        const { Share } = await import('@capacitor/share')
+        let binary = ''
+        const chunkSize = 0x8000
+        for (let i = 0; i < zipBytes.length; i += chunkSize) {
+          binary += String.fromCharCode.apply(null, zipBytes.subarray(i, i + chunkSize))
+        }
+        const result = await Filesystem.writeFile({
+          path: filename,
+          data: btoa(binary),
+          directory: Directory.Cache
+        })
+        await Share.share({ files: [result.uri], title: '书记导出' })
+      } else {
+        const url = URL.createObjectURL(zipBlob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = filename
+        a.click()
+        URL.revokeObjectURL(url)
+      }
       return { code: 200 }
     } catch (e) {
       console.error('Failed to export bnotes:', e)

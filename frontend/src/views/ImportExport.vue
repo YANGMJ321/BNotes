@@ -58,10 +58,18 @@
           >
             {{ exporting ? '导出中...' : '导出选中书籍' }}
           </button>
+          <button
+            class="btn btn-secondary"
+            :disabled="selectedBookIds.length === 0 || exportingPdf"
+            @click="handleExportPdf"
+          >
+            {{ exportingPdf ? '生成中...' : '导出 PDF' }}
+          </button>
         </div>
 
         <div v-if="exportError" class="message error">{{ exportError }}</div>
         <div v-if="exportSuccess" class="message success">导出成功！文件已开始下载</div>
+        <div v-if="exportPdfSuccess" class="message success">PDF 导出成功！文件已开始下载</div>
       </div>
     </div>
 
@@ -203,8 +211,10 @@ const bookStore = useBookStore()
 const activeTab = ref('export')
 const selectedBookIds = ref([])
 const exporting = ref(false)
+const exportingPdf = ref(false)
 const exportError = ref('')
 const exportSuccess = ref(false)
+const exportPdfSuccess = ref(false)
 
 const isDragOver = ref(false)
 const importFile = ref(null)
@@ -250,6 +260,102 @@ async function handleExport() {
     exportError.value = '导出失败：' + e.message
   }
   exporting.value = false
+}
+
+async function handleExportPdf() {
+  if (selectedBookIds.value.length === 0) return
+  exportingPdf.value = true
+  exportError.value = ''
+  exportPdfSuccess.value = false
+
+  try {
+    // 从当前已加载的书架数据中筛出选中的书籍
+    const selected = bookStore.books.filter(b => selectedBookIds.value.includes(b.id))
+    const { jsPDF } = await import('jspdf')
+    const doc = new jsPDF()
+
+    const statusMap = { want: '想读', reading: '在读', done: '已读' }
+    let cursorY = 20
+
+    // 逐本获取完整数据（含笔记），保证两端字段一致
+    for (const book of selected) {
+      const detail = await bookStore.fetchBook(book.id)
+      const full = detail?.code === 200 ? detail.data : book
+      const note = full.note || {}
+
+      // 书籍标题
+      doc.setFontSize(16)
+      doc.setFont('helvetica', 'bold')
+      doc.text(full.title || '未命名', 15, cursorY)
+      cursorY += 7
+
+      // 元信息
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      const metaParts = []
+      if (full.author) metaParts.push(`作者: ${full.author}`)
+      if (full.category_name) metaParts.push(`分类: ${full.category_name}`)
+      metaParts.push(`状态: ${statusMap[full.status] || full.status}`)
+      if (full.progress != null) metaParts.push(`进度: ${full.progress}%`)
+      doc.setTextColor(120, 120, 120)
+      doc.text(metaParts.join(' | '), 15, cursorY)
+      doc.setTextColor(0, 0, 0)
+      cursorY += 7
+
+      if (full.tags) {
+        doc.setFontSize(9)
+        doc.setTextColor(100, 100, 100)
+        doc.text(`标签: ${full.tags.split(',').join('、')}`, 15, cursorY)
+        doc.setTextColor(0, 0, 0)
+        cursorY += 7
+      }
+
+      // 笔记内容
+      const sections = [
+        { title: '金句摘录', content: note.excerpts },
+        { title: '读后感', content: note.reflections },
+        { title: '笔记内容', content: note.content }
+      ]
+      for (const sec of sections) {
+        if (!sec.content) continue
+        // 检查是否需要新页
+        if (cursorY > 270) {
+          doc.addPage()
+          cursorY = 20
+        }
+        doc.setFontSize(12)
+        doc.setFont('helvetica', 'bold')
+        doc.text(sec.title, 15, cursorY)
+        cursorY += 6
+        doc.setFontSize(10)
+        doc.setFont('helvetica', 'normal')
+        const lines = doc.splitTextToSize(sec.content, 180)
+        for (const line of lines) {
+          if (cursorY > 280) {
+            doc.addPage()
+            cursorY = 20
+          }
+          doc.text(line, 15, cursorY)
+          cursorY += 5
+        }
+        cursorY += 6
+      }
+
+      cursorY += 10
+      // 分隔线：若空间不足则翻页
+      if (cursorY > 280) {
+        doc.addPage()
+        cursorY = 20
+      }
+    }
+
+    doc.save(`BNotes-PDF-${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.pdf`)
+    exportPdfSuccess.value = true
+    setTimeout(() => { exportPdfSuccess.value = false }, 3000)
+  } catch (e) {
+    exportError.value = 'PDF 导出失败：' + e.message
+  }
+  exportingPdf.value = false
 }
 
 function triggerFileInput() {

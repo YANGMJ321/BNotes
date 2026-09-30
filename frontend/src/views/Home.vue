@@ -27,6 +27,10 @@
       <div class="batch-actions" v-if="selectedBooks.length > 0">
         <span>已选择 {{ selectedBooks.length }} 本书</span>
         <button class="btn btn-small" @click="batchDelete">批量删除</button>
+        <select v-model="moveCategory" class="filter-select batch-move-select" title="选择目标分类">
+          <option value="">选择分类…</option>
+          <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+        </select>
         <button class="btn btn-small" @click="batchMove">批量移动</button>
         <button class="btn btn-small" @click="batchExport">批量导出</button>
         <button class="btn btn-small btn-text" @click="clearSelection">取消</button>
@@ -98,6 +102,7 @@ const selectedStatus = ref('')
 const selectedTag = ref('')
 const selectedBooks = ref([])
 const viewMode = ref('list')
+const moveCategory = ref('')
 
 const categories = computed(() => bookStore.categories)
 const allTags = computed(() => bookStore.tags)
@@ -143,6 +148,7 @@ function toggleSelect(id) {
 
 function clearSelection() {
   selectedBooks.value = []
+  moveCategory.value = ''
 }
 
 async function batchDelete() {
@@ -153,11 +159,12 @@ async function batchDelete() {
 }
 
 async function batchMove() {
-  const categoryId = prompt('请输入目标分类ID：')
-  if (categoryId) {
-    await bookStore.batchMove(selectedBooks.value, parseInt(categoryId))
-    clearSelection()
+  if (!moveCategory.value) {
+    alert('请先在下拉框中选择目标分类')
+    return
   }
+  await bookStore.batchMove(selectedBooks.value, parseInt(moveCategory.value))
+  clearSelection()
 }
 
 async function batchExport() {
@@ -198,6 +205,11 @@ async function toggleViewMode() {
   color: var(--text-color);
   font-size: 14px;
   cursor: pointer;
+}
+
+.batch-move-select {
+  max-width: 140px;
+  padding: 6px 8px;
 }
 
 .btn-view-toggle {

@@ -3,6 +3,8 @@
  * 基于 sql.js + IndexedDB，在 WebView 中运行，无需 Node.js 后端
  */
 
+import initSqlJs from 'sql.js'
+
 const DB_NAME = 'bnotes-mobile'
 const STORE_NAME = 'database'
 const STORE_KEY = 'main'
@@ -21,9 +23,9 @@ class Database {
   async init() {
     if (this.db) return
 
-    // 加载 sql.js
+    // 加载 sql.js（wasm 本地打包，离线可用）
     const SQL = await initSqlJs({
-      locateFile: file => `https://sql.js.org/dist/${file}`
+      locateFile: file => 'sql-wasm.wasm'
     })
 
     // 尝试从 IndexedDB 恢复已有数据库
@@ -236,7 +238,7 @@ class Database {
       this.db.close()
     }
     const SQL = await initSqlJs({
-      locateFile: file => `https://sql.js.org/dist/${file}`
+      locateFile: file => 'sql-wasm.wasm'
     })
     this.db = new SQL.Database(new Uint8Array(data))
     await this.saveNow()

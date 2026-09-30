@@ -2,6 +2,54 @@
 
 所有重要的版本更新都会记录在此文件中。
 
+## [1.6.0] - 2026-09-30
+
+### 阶段六 · 桌面端体验打磨
+
+#### 新增
+- **PDF 导出**：导入导出页新增"导出 PDF"按钮，基于 jsPDF 将选中书籍（含金句/读后感/笔记内容）排版为 PDF，桌面端与移动端均可使用
+
+#### 修复
+- **批量移动体验**：书架页"批量移动"从 `prompt` 手输分类 ID 改为下拉框选择分类，未选分类时提示
+- **菜单"导出"失效**：Electron 菜单中"导出"此前发送无人监听的 `export-pdf` 事件，现改为直接跳转导入导出页（`Ctrl+E` 同样生效）
+
+#### 变更文件
+| 文件 | 变更说明 |
+|------|----------|
+| `frontend/src/views/Home.vue` | 批量移动改为分类下拉选择 |
+| `electron/main.js` | 菜单"导出"跳转导入导出页 |
+| `frontend/src/views/ImportExport.vue` | 新增 PDF 导出 |
+| `mobile/package.json` | 补 jspdf 依赖 |
+
+---
+
+## [1.5.0] - 2026-09-30
+
+### 阶段五 · 移动端离线修复与加固
+
+#### 新增
+- **备份/恢复数据库**：移动端"更多"页面新增"备份数据库"与"恢复备份"
+  - 备份：导出整个数据库为 `.db` 文件，原生平台通过系统分享面板保存/发送
+  - 恢复：选择 `.db` 备份文件，确认后替换当前全部数据并自动刷新
+- **导出改为原生分享**：移动端 ZIP 导出改用 Capacitor Filesystem + Share，走系统分享面板，Web 环境自动降级为浏览器下载
+
+#### 修复
+- **移动端 sql.js 离线加载**：修复 `initSqlJs` 未导入的问题，sql-wasm 从 CDN 改为随 APK 本地打包，真正实现"无需联网、零网络权限"
+- 移除无代码引用的遗留配置 `version.config.json`
+- `electron/package.json` 精简为当前架构（删除 PHP 时代遗留配置）
+
+#### 变更文件
+| 文件 | 变更说明 |
+|------|----------|
+| `mobile/src/database.js` | 显式导入 sql.js，wasm 本地打包 |
+| `mobile/src/views/MoreView.vue` | 新增备份/恢复入口 |
+| `mobile/src/stores/books.js` | ZIP 导出改用 Capacitor 原生分享 |
+| `mobile/public/sql-wasm.wasm` | wasm 本地资源（随 APK 打包） |
+| `.gitignore` | 新增 data/（用户数据库不入库） |
+| `electron/package.json` | 精简为当前架构 |
+
+---
+
 ## [1.4.0] - 2026-06-15
 
 ### 阶段四 · 安卓移植

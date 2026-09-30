@@ -1,6 +1,6 @@
 {
     "name": "BNotes",
-    "version": "1.4.0",
+    "version": "1.6.0",
     "description": "读书笔记管理系统",
     "author": "BNotes",
     "main": "electron/main.js",
