@@ -1,0 +1,7 @@
+{
+    "name": "bnotes-electron",
+    "version": "1.9.4",
+    "description": "BNotes Desktop Application",
+    "main": "main.js",
+    "private": true
+}
