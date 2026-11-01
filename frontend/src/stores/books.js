@@ -258,15 +258,6 @@ export const useBookStore = defineStore('books', () => {
     return await res.json()
   }
 
-  async function submitFeedback(data) {
-    const res = await fetch(`${API_BASE}/feedback`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    })
-    return await res.json()
-  }
-
   async function getSetting(key) {
     const res = await fetch(`${API_BASE}/settings/${key}`)
     const data = await res.json()
@@ -465,7 +456,6 @@ export const useBookStore = defineStore('books', () => {
     saveCurrentBook,
     fetchCategoryBooks,
     fetchTagBooks,
-    submitFeedback,
     getSetting,
     saveSetting,
     exportBnotes,

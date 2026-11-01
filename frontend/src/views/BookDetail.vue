@@ -263,6 +263,8 @@ async function deleteBook() {
 }
 
 .btn {
+  display: inline-flex;
+  align-items: center;
   padding: 10px 20px;
   border: none;
   border-radius: 8px;
