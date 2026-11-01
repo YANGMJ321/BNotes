@@ -482,7 +482,19 @@ app.get('/api/health', (_req, res) => {
 app.get('/api/search', (req, res) => {
   try {
     const keyword = req.query.keyword || ''
+    const scope = req.query.scope || 'all' // all=全部 title=书名/作者 note=笔记内容
     const like = `%${keyword}%`
+    const conds = []
+    const params = []
+    if (scope !== 'note') {
+      conds.push('(b.title LIKE ? OR b.author LIKE ?)')
+      params.push(like, like)
+    }
+    if (scope !== 'title') {
+      conds.push('(n.content LIKE ? OR n.excerpts LIKE ? OR n.reflections LIKE ?)')
+      params.push(like, like, like)
+    }
+    const where = conds.length ? `WHERE ${conds.join(' OR ')}` : ''
     const books = queryAll(`
       SELECT b.*, c.name as category_name,
              GROUP_CONCAT(DISTINCT t.name) as tags
@@ -491,10 +503,10 @@ app.get('/api/search', (req, res) => {
       LEFT JOIN book_tags bt ON b.id = bt.book_id
       LEFT JOIN tags t ON bt.tag_id = t.id
       LEFT JOIN notes n ON b.id = n.book_id
-      WHERE b.title LIKE ? OR b.author LIKE ? OR n.content LIKE ? OR n.excerpts LIKE ?
+      ${where}
       GROUP BY b.id
       ORDER BY b.updated_at DESC
-    `, [like, like, like, like])
+    `, params)
     res.json({ code: 200, data: books })
   } catch (e) {
     res.json({ code: 500, message: e.message })

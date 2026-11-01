@@ -138,9 +138,10 @@ export const useBookStore = defineStore('books', () => {
     }
   }
 
-  async function searchBooks(keyword) {
+  async function searchBooks(keyword, scope) {
     try {
-      const res = await fetch(`${API_BASE}/search?keyword=${encodeURIComponent(keyword)}`)
+      const scopeParam = scope && scope !== 'all' ? `&scope=${encodeURIComponent(scope)}` : ''
+      const res = await fetch(`${API_BASE}/search?keyword=${encodeURIComponent(keyword)}${scopeParam}`)
       const data = await res.json()
       return data
     } catch (e) {

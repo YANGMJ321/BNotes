@@ -13,8 +13,9 @@
 ### ✍️ 笔记写作
 - 每本书三个笔记板块：**金句摘录 / 读后感 / 笔记整理**
 - 全面支持 **Markdown** 语法，编辑 / 预览一键切换
+- **编辑自动保存草稿**：中途离开不丢内容，回到编辑页或首页草稿箱一键继续
 - 笔记流视图：按书籍、金句、读后感、整理笔记多维度浏览
-- 全局搜索：快速查找书籍与笔记内容
+- 全局搜索：可按书名或笔记内容分范围快速查找
 
 ### 📊 阅读统计
 - 概览数字卡：总藏书、想读、在读、已读、笔记条数
@@ -70,8 +71,9 @@ Shuji (BNotes) is a clean, efficient, offline-first desktop reading-notes manage
 ### ✍️ Note Writing
 - Three note sections per book: **Excerpts / Reflections / Organized Notes**
 - Full **Markdown** support with one-click edit / preview switching
+- **Auto-saved drafts**: leave mid-edit without losing content; resume from the editor or the draft box on the home page
 - Notes feed view: browse by book, excerpts, reflections, or organized notes
-- Global search across books and note content
+- Scoped global search: search by book title or by note content
 
 ### 📊 Reading Statistics
 - Overview cards: total books, want to read, reading, finished, note count

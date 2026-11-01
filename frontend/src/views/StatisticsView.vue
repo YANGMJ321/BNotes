@@ -15,7 +15,13 @@
 
     <!-- 概览 -->
     <div v-if="currentTab === 'overview'" class="overview-grid">
-      <div v-for="card in overviewCards" :key="card.label" class="stat-card">
+      <div
+        v-for="card in overviewCards"
+        :key="card.label"
+        class="stat-card"
+        :class="{ clickable: card.to }"
+        @click="goCard(card)"
+      >
         <div class="stat-value">{{ card.value }}</div>
         <div class="stat-label">{{ card.label }}</div>
       </div>
@@ -110,8 +116,10 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useBookStore } from '../stores/books'
 
+const router = useRouter()
 const bookStore = useBookStore()
 
 const tabs = [
@@ -146,12 +154,23 @@ const noteCount = computed(() =>
 )
 
 const overviewCards = computed(() => [
-  { label: '总藏书', value: totalBooks.value },
-  { label: '想读', value: statusCounts.value.want },
-  { label: '在读', value: statusCounts.value.reading },
-  { label: '已读', value: statusCounts.value.done },
-  { label: '笔记条数', value: noteCount.value }
+  { label: '总藏书', value: totalBooks.value, to: '/' },
+  { label: '想读', value: statusCounts.value.want, to: '/', status: 'want' },
+  { label: '在读', value: statusCounts.value.reading, to: '/', status: 'reading' },
+  { label: '已读', value: statusCounts.value.done, to: '/', status: 'done' },
+  { label: '笔记条数', value: noteCount.value, to: '/notes' }
 ])
+
+// 点击概览卡跳转：状态卡会带上对应筛选条件
+function goCard(card) {
+  if (!card.to) return
+  if (card.status) {
+    bookStore.setFilter({ status: card.status, category: '', tag: '' })
+  } else if (card.to === '/') {
+    bookStore.setFilter({ status: '', category: '', tag: '' })
+  }
+  router.push(card.to)
+}
 
 const STATUS_META = [
   { key: 'want', label: '想读', color: '#1976d2' },
@@ -312,6 +331,16 @@ onMounted(() => {
   padding: 20px;
   text-align: center;
   transition: all 0.2s;
+}
+
+.stat-card.clickable {
+  cursor: pointer;
+}
+
+.stat-card.clickable:hover {
+  border-color: var(--primary-color);
+  box-shadow: 0 4px 12px var(--shadow-color);
+  transform: translateY(-2px);
 }
 
 .stat-value {

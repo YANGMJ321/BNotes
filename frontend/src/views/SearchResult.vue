@@ -2,6 +2,16 @@
   <div class="search-result">
     <h1>搜索结果: "{{ keyword }}"</h1>
 
+    <div class="scope-tabs">
+      <button
+        v-for="tab in scopeTabs"
+        :key="tab.value"
+        class="scope-tab"
+        :class="{ active: scope === tab.value }"
+        @click="setScope(tab.value)"
+      >{{ tab.label }}</button>
+    </div>
+
     <div class="results-count" v-if="results.length">
       找到 {{ results.length }} 个结果
     </div>
@@ -48,6 +58,12 @@ const bookStore = useBookStore()
 const results = ref([])
 const loading = ref(false)
 const keyword = ref('')
+const scope = ref('all')
+const scopeTabs = [
+  { label: '全部', value: 'all' },
+  { label: '书名搜索', value: 'title' },
+  { label: '笔记搜索', value: 'note' }
+]
 
 onMounted(() => {
   keyword.value = route.query.q || ''
@@ -63,6 +79,14 @@ watch(() => route.query.q, (newQ) => {
   }
 })
 
+function setScope(value) {
+  if (scope.value === value) return
+  scope.value = value
+  if (keyword.value.trim()) {
+    search()
+  }
+}
+
 async function search() {
   if (!keyword.value.trim()) {
     results.value = []
@@ -70,7 +94,7 @@ async function search() {
   }
 
   loading.value = true
-  const data = await bookStore.searchBooks(keyword.value)
+  const data = await bookStore.searchBooks(keyword.value, scope.value)
   if (data.code === 200) {
     results.value = data.data
   }
@@ -113,6 +137,33 @@ function goToBook(id) {
 .search-result h1 {
   font-size: 24px;
   margin: 0 0 16px;
+}
+
+.scope-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--tag-bg);
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+.scope-tab {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.scope-tab.active {
+  background: var(--card-bg);
+  color: var(--primary-color);
+  font-weight: 500;
+  box-shadow: 0 1px 4px var(--shadow-color);
 }
 
 .results-count {

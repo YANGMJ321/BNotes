@@ -44,13 +44,22 @@ function wrapLines(ctx, text, maxWidth) {
 
 function buildLayout(ctx, books) {
   const ops = []
+  const CONTENT_BOTTOM = PAGE_H - MARGIN
+  let page = 0
   let y = MARGIN
 
-  const addText = (text, font, color, lineHeight, maxWidth = CONTENT_W, x = MARGIN) => {
+  // keep：标题类内容需要与后续正文保持的最小空间，不足则整体换页，避免孤行
+  const newPage = () => { page += 1; y = MARGIN }
+  // 空间不足时换页（用于分隔线等不可拆元素）
+  const ensureSpace = (h) => { if (y + h > CONTENT_BOTTOM) newPage() }
+
+  const addText = (text, font, color, lineHeight, maxWidth = CONTENT_W, x = MARGIN, keep = 0) => {
     ctx.font = font
     const lines = wrapLines(ctx, text, maxWidth)
-    for (const line of lines) {
-      ops.push({ text: line, font, color, x, y })
+    for (let i = 0; i < lines.length; i++) {
+      const need = lineHeight + (i === 0 ? keep : 0)
+      if (y + need > CONTENT_BOTTOM) newPage()
+      ops.push({ text: lines[i], font, color, x, y, page })
       y += lineHeight
     }
   }
@@ -58,7 +67,7 @@ function buildLayout(ctx, books) {
   books.forEach((book, index) => {
     if (index > 0) y += 30
 
-    addText(book.title || '未命名书籍', `bold 44px ${FONT_FAMILY}`, '#2f2f2f', 58)
+    addText(book.title || '未命名书籍', `bold 44px ${FONT_FAMILY}`, '#2f2f2f', 58, CONTENT_W, MARGIN, 150)
 
     const meta = []
     if (book.author) meta.push(`作者：${book.author}`)
@@ -88,7 +97,8 @@ function buildLayout(ctx, books) {
     for (const section of sections) {
       if (!section.content || !String(section.content).trim()) continue
       hasContent = true
-      addText(section.title, `bold 32px ${FONT_FAMILY}`, '#7B8FA1', 46)
+      // 标题至少与两行正文同页，防止标题孤悬页尾
+      addText(section.title, `bold 32px ${FONT_FAMILY}`, '#7B8FA1', 46, CONTENT_W, MARGIN, 110)
       addText(section.content, `28px ${FONT_FAMILY}`, '#3a3a3a', 46)
       y += 26
     }
@@ -99,12 +109,13 @@ function buildLayout(ctx, books) {
     }
 
     if (index < books.length - 1) {
-      ops.push({ line: true, y, color: '#e3e3e3' })
+      ensureSpace(30)
+      ops.push({ line: true, y, color: '#e3e3e3', page })
       y += 26
     }
   })
 
-  return { ops, height: y + MARGIN }
+  return { ops, lastPage: page }
 }
 
 function drawOps(ctx, ops) {
@@ -131,25 +142,18 @@ async function renderPageCanvases(books) {
   measureCanvas.width = PAGE_W
   measureCanvas.height = 100
   const measureCtx = measureCanvas.getContext('2d')
-  const { ops, height } = buildLayout(measureCtx, books)
+  const { ops, lastPage } = buildLayout(measureCtx, books)
 
-  // 按页裁剪绘制，避免超出画布高度导致后续页面空白或内容丢失
-  const pageCount = Math.max(1, Math.ceil(height / PAGE_H))
+  // 排版阶段已按页分组（op.page），逐页绘制，保证行内容不会被页边界从中间截断
   const result = []
-  for (let i = 0; i < pageCount; i++) {
+  for (let i = 0; i <= lastPage; i++) {
     const pageCanvas = document.createElement('canvas')
     pageCanvas.width = PAGE_W
     pageCanvas.height = PAGE_H
     const ctx = pageCanvas.getContext('2d')
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, PAGE_W, PAGE_H)
-    ctx.save()
-    ctx.beginPath()
-    ctx.rect(0, 0, PAGE_W, PAGE_H)
-    ctx.clip()
-    ctx.translate(0, -i * PAGE_H)
-    drawOps(ctx, ops)
-    ctx.restore()
+    drawOps(ctx, ops.filter(op => op.page === i))
     result.push(pageCanvas)
   }
   return result
@@ -197,7 +201,9 @@ export async function exportBooksToPdf(books) {
   })
 
   const dateStr = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')
-  const filename = `书记笔记-${dateStr}.pdf`
+  // 文件名自动生成：单本导出用「书名-日期」，多本合并导出用「书记笔记-日期」
+  const safeTitle = String(books[0].title || '').replace(/[\\/:*?"<>|]/g, '').trim() || '未命名书籍'
+  const filename = books.length === 1 ? `${safeTitle}-${dateStr}.pdf` : `书记笔记-${dateStr}.pdf`
 
   try {
     const saved = await savePdf(doc, filename)

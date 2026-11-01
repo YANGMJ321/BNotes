@@ -18,6 +18,22 @@
       <router-link to="/books/new" class="shelf-add" aria-label="新建书籍">+</router-link>
     </div>
 
+    <div class="draft-box" v-if="draftEntries.length">
+      <div class="draft-header">
+        <span class="draft-title">📝 草稿箱</span>
+        <span class="draft-hint">编辑中断的内容已自动保存，点击继续</span>
+      </div>
+      <div class="draft-list">
+        <div v-for="d in draftEntries" :key="d.key" class="draft-item" @click="router.push(d.target)">
+          <div class="draft-main">
+            <span class="draft-book">{{ d.title }}</span>
+            <span class="draft-snippet" v-if="d.snippet">{{ d.snippet }}</span>
+          </div>
+          <button class="draft-discard" @click.stop="discardDraft(d.key)">放弃</button>
+        </div>
+      </div>
+    </div>
+
     <div class="filters">
       <div class="filter-group">
         <select v-model="selectedCategory" class="filter-select" @change="filterBooks">
@@ -198,6 +214,49 @@ function statusText(status) {
   return map[status] || status
 }
 
+// ========== 草稿箱：扫描编辑页自动保存的本地草稿，有草稿才显示 ==========
+const draftRefreshFlag = ref(0)
+
+const draftEntries = computed(() => {
+  draftRefreshFlag.value // 手动刷新标记，删除草稿后重新扫描
+  const entries = []
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (!key || !key.startsWith('bnotes-draft-book-')) continue
+      let data = null
+      try {
+        data = JSON.parse(localStorage.getItem(key))
+      } catch (e) { continue }
+      if (!data) continue
+      const idPart = key.replace('bnotes-draft-book-', '')
+      const isNewDraft = idPart === 'new'
+      const book = isNewDraft ? null : bookStore.books.find(b => b.id === Number(idPart))
+      const title = (data.title || '').trim() || (book ? book.title : '') || (isNewDraft ? '未命名笔记' : '笔记草稿')
+      const snippet = stripMarkdown(data.note?.excerpts || data.note?.reflections || data.note?.content || '')
+      entries.push({
+        key,
+        title,
+        snippet: snippet.slice(0, 60),
+        target: isNewDraft ? '/books/new' : `/books/${idPart}/edit`
+      })
+    }
+  } catch (e) { /* 忽略 */ }
+  return entries
+})
+
+function stripMarkdown(text) {
+  return String(text || '')
+    .replace(/[#*`>\[\]()-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function discardDraft(key) {
+  try { localStorage.removeItem(key) } catch (e) { /* 忽略 */ }
+  draftRefreshFlag.value++
+}
+
 function goToBook(id) {
   router.push(`/books/${id}`)
 }
@@ -311,6 +370,97 @@ async function toggleViewMode() {
 .shelf-add:hover {
   text-decoration: none;
   background: var(--primary-dark);
+}
+
+.draft-box {
+  background: var(--card-bg);
+  border: 1px dashed var(--border-color);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+
+.draft-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.draft-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.draft-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  opacity: 0.8;
+}
+
+.draft-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.draft-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--tag-bg);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.draft-item:hover {
+  background: var(--primary-light);
+}
+
+.draft-main {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.draft-book {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 40%;
+}
+
+.draft-snippet {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.draft-discard {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.draft-discard:hover {
+  color: #c62828;
+  background: rgba(198, 40, 40, 0.08);
 }
 
 .filters {

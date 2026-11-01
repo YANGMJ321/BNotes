@@ -18,28 +18,38 @@
     </div>
 
     <div v-if="!manageMode" class="tags-cloud">
-      <div v-for="tag in tags" :key="tag.id" class="tag-wrapper">
-        <div
-          class="tag-item"
-          :class="{ expanded: expandedTagId === tag.id }"
-          @click="toggleTagBooks(tag.id)"
-        >
-          <span class="tag-name">{{ tag.name }}</span>
-          <span class="tag-count">{{ tagCount(tag) }}</span>
-          <button class="btn-delete" @click.stop="deleteTag(tag.id)">×</button>
-        </div>
-        <div v-if="expandedTagId === tag.id" class="tag-books-section">
-          <div v-if="tagBooksLoading" class="books-loading">加载中...</div>
-          <div v-else-if="tagBooks.length === 0" class="books-empty">该标签下暂无书籍</div>
-          <div v-else class="books-list">
+      <div
+        v-for="(groupTags, groupName) in displayGroups"
+        :key="groupName"
+        class="tag-group"
+        :class="{ naked: !hasGroups }"
+      >
+        <div class="group-header" v-if="hasGroups">{{ groupName }}</div>
+        <div class="group-tags" :class="{ naked: !hasGroups }">
+          <div v-for="tag in groupTags" :key="tag.id" class="tag-wrapper">
             <div
-              v-for="book in tagBooks"
-              :key="book.id"
-              class="book-item"
-              @click="goToBook(book.id)"
+              class="tag-item"
+              :class="{ expanded: expandedTagId === tag.id }"
+              @click="toggleTagBooks(tag.id)"
             >
-              <span class="book-title">{{ book.title }}</span>
-              <span class="book-author">{{ book.author || '未知作者' }}</span>
+              <span class="tag-name">{{ tag.name }}</span>
+              <span class="tag-count">{{ tagCount(tag) }}</span>
+              <button class="btn-delete" @click.stop="deleteTag(tag.id)">×</button>
+            </div>
+            <div v-if="expandedTagId === tag.id" class="tag-books-section">
+              <div v-if="tagBooksLoading" class="books-loading">加载中...</div>
+              <div v-else-if="tagBooks.length === 0" class="books-empty">该标签下暂无书籍</div>
+              <div v-else class="books-list">
+                <div
+                  v-for="book in tagBooks"
+                  :key="book.id"
+                  class="book-item"
+                  @click="goToBook(book.id)"
+                >
+                  <span class="book-title">{{ book.title }}</span>
+                  <span class="book-author">{{ book.author || '未知作者' }}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -47,7 +57,7 @@
     </div>
 
     <div v-else class="tags-manage-list">
-      <div v-for="(groupTags, groupName) in groupedTags" :key="groupName" class="tag-group">
+      <div v-for="(groupTags, groupName) in displayGroups" :key="groupName" class="tag-group">
         <div class="group-header">{{ groupName }}</div>
         <div class="group-tags">
           <div v-for="tag in groupTags" :key="tag.id" class="tag-manage-item">
@@ -103,15 +113,25 @@ const expandedTagId = ref(null)
 const tagBooks = ref([])
 const tagBooksLoading = ref(false)
 
-const groupedTags = computed(() => {
+// 是否有人设置过分组：从未分过组时平铺显示，不出现组标题
+const hasGroups = computed(() => tags.value.some(tag => (tag.group_name || '').trim()))
+
+const displayGroups = computed(() => {
+  // 无分组时返回单一假分组（不渲染标题），视觉上等同原平铺云
+  if (!hasGroups.value) return { '': tags.value }
   const groups = {}
+  const ungrouped = []
   tags.value.forEach(tag => {
-    const groupName = tag.group_name || '未分组'
-    if (!groups[groupName]) {
-      groups[groupName] = []
+    const name = (tag.group_name || '').trim()
+    if (!name) {
+      ungrouped.push(tag)
+      return
     }
-    groups[groupName].push(tag)
+    if (!groups[name]) groups[name] = []
+    groups[name].push(tag)
   })
+  // 未分组的标签放在最后
+  if (ungrouped.length) groups['未分组'] = ungrouped
   return groups
 })
 
@@ -246,8 +266,31 @@ function goToBook(bookId) {
 
 .tags-cloud {
   display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 无分组时的平铺形态：去掉组容器外观 */
+.tag-group.naked {
+  border: none;
+  background: none;
+}
+
+.group-tags.naked {
+  padding: 0;
+}
+
+.tags-cloud .group-tags {
+  display: flex;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+@media (max-width: 600px) {
+  .tags-cloud .group-tags {
+    flex-direction: column;
+    gap: 10px;
+  }
 }
 
 .tag-wrapper {

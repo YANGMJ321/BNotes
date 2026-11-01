@@ -336,10 +336,22 @@ export const useBookStore = defineStore('books', () => {
     return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>')
   }
 
-  async function searchBooks(keyword) {
+  async function searchBooks(keyword, scope) {
     try {
       await db.init()
       const like = `%${keyword}%`
+      // scope: all=全部 title=仅书名/作者 note=仅笔记内容
+      const conds = []
+      const params = []
+      if (scope !== 'note') {
+        conds.push('(b.title LIKE ? OR b.author LIKE ?)')
+        params.push(like, like)
+      }
+      if (scope !== 'title') {
+        conds.push('(n.content LIKE ? OR n.excerpts LIKE ? OR n.reflections LIKE ?)')
+        params.push(like, like, like)
+      }
+      const where = conds.length ? `WHERE ${conds.join(' OR ')}` : ''
       const rows = db.queryAll(`
         SELECT b.*, c.name as category_name,
                GROUP_CONCAT(DISTINCT t.id) as tag_ids,
@@ -351,10 +363,10 @@ export const useBookStore = defineStore('books', () => {
         LEFT JOIN book_tags bt ON b.id = bt.book_id
         LEFT JOIN tags t ON bt.tag_id = t.id
         LEFT JOIN notes n ON b.id = n.book_id
-        WHERE b.title LIKE ? OR b.author LIKE ? OR n.content LIKE ? OR n.excerpts LIKE ? OR n.reflections LIKE ?
+        ${where}
         GROUP BY b.id
         ORDER BY b.updated_at DESC
-      `, [like, like, like, like, like])
+      `, params)
       return { code: 200, data: rows }
     } catch (e) {
       console.error('Failed to search:', e)
