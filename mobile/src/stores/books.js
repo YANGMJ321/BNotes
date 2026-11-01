@@ -154,6 +154,15 @@ export const useBookStore = defineStore('books', () => {
           saveTags(bookData.id, bookData.tags)
         }
 
+        // 关联书籍
+        if (bookData.links !== undefined) {
+          db.run('DELETE FROM note_links WHERE source_note_id = (SELECT id FROM notes WHERE book_id = ?)', [bookData.id])
+          for (const link of bookData.links) {
+            db.run(`INSERT INTO note_links (source_note_id, target_book_id, keyword)
+              VALUES ((SELECT id FROM notes WHERE book_id = ?), ?, ?)`, [bookData.id, link.target_book_id, link.keyword || ''])
+          }
+        }
+
         await db.save()
         await fetchBooks()
         return { code: 200, message: 'Book updated' }
@@ -180,6 +189,14 @@ export const useBookStore = defineStore('books', () => {
         // INSERT book_tags
         if (bookData.tags && bookData.tags.length > 0) {
           saveTags(bookId, bookData.tags)
+        }
+
+        // INSERT 关联书籍
+        if (Array.isArray(bookData.links) && bookData.links.length > 0) {
+          for (const link of bookData.links) {
+            db.run(`INSERT INTO note_links (source_note_id, target_book_id, keyword)
+              VALUES ((SELECT id FROM notes WHERE book_id = ?), ?, ?)`, [bookId, link.target_book_id, link.keyword || ''])
+          }
         }
 
         await db.save()

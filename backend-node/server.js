@@ -97,8 +97,29 @@ app.post('/api/books', (req, res) => {
     const bookId = result.lastInsertRowid
     run('INSERT INTO notes (book_id) VALUES (?)', [bookId])
 
+    // 新建时表单里填写的笔记内容也要落库，否则创建后笔记为空
+    if (data.note) {
+      const noteData = data.note
+      run(`UPDATE notes SET content = ?, excerpts = ?, reflections = ?, note_date = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE book_id = ?`, [
+        noteData.content || '',
+        noteData.excerpts || '',
+        noteData.reflections || '',
+        noteData.note_date || null,
+        bookId
+      ])
+    }
+
     if (data.tags && data.tags.length > 0) {
       saveTags(bookId, data.tags)
+    }
+
+    // 新建时的关联书籍
+    if (Array.isArray(data.links) && data.links.length > 0) {
+      for (const link of data.links) {
+        run(`INSERT INTO note_links (source_note_id, target_book_id, keyword)
+          VALUES ((SELECT id FROM notes WHERE book_id = ?), ?, ?)`, [bookId, link.target_book_id, link.keyword || ''])
+      }
     }
 
     res.json({ code: 201, message: 'Book created', data: { id: bookId } })

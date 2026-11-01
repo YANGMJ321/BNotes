@@ -426,6 +426,9 @@ function clearDrafts(bookId) {
     localStorage.removeItem('bnotes-draft-book-new')
     if (bookId) localStorage.removeItem(`bnotes-draft-book-${bookId}`)
   } catch (e) { /* 忽略 */ }
+  // 把快照对齐当前表单：保存后跳转触发 onUnmounted 的 flushDraft 时，
+  // 表单与快照一致，不会把刚清掉的草稿又写回去
+  loadedSnapshot = JSON.stringify(form)
   draftRestored.value = false
 }
 
