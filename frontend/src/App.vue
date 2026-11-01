@@ -3,7 +3,7 @@
     <aside class="sidebar">
       <div class="logo">
         <h1>BNotes</h1>
-        <span class="subtitle">读书笔记</span>
+        <span class="subtitle">书记</span>
       </div>
 
       <nav class="nav">

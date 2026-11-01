@@ -98,7 +98,7 @@ function createWindow() {
             nodeIntegration: false,
             contextIsolation: true
         },
-        title: 'BNotes - 读书笔记',
+        title: 'BNotes - 书记',
         icon: path.join(__dirname, 'icon.png')
     });
 
@@ -165,7 +165,7 @@ function createWindow() {
                         dialog.showMessageBox(mainWindow, {
                             type: 'info',
                             title: '关于 BNotes',
-                            message: 'BNotes - 读书笔记管理系统',
+                            message: 'BNotes - 书记',
                             detail: '版本: 1.9.4\n一个简洁高效的读书笔记管理工具'
                         });
                     }
