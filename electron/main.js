@@ -166,7 +166,7 @@ function createWindow() {
                             type: 'info',
                             title: '关于 BNotes',
                             message: 'BNotes - 书记',
-                            detail: '版本: 1.9.4\n一个简洁高效的读书笔记管理工具'
+                            detail: '版本: 1.9.5\n一个简洁高效的读书笔记管理工具'
                         });
                     }
                 }

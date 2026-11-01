@@ -43,7 +43,7 @@
 
 ## 下载使用
 
-1. 前往 [Releases](../../releases) 页面下载最新版压缩包（如 `BNotes书记V1.9.4-win.zip`）
+1. 前往 [Releases](../../releases) 页面下载最新版压缩包（如 `BNotes书记V1.9.5-win.zip`）
 2. 解压后双击 `BNotes.exe` 即可运行，**无需安装**，绿色便携
 3. 数据保存在程序同目录的 `data/` 文件夹下，方便随程序一起拷贝迁移
 
@@ -101,7 +101,7 @@ Shuji (BNotes) is a clean, efficient, offline-first desktop reading-notes manage
 
 ## Download & Install
 
-1. Go to the [Releases](../../releases) page and download the latest zip (e.g. `BNotes书记V1.9.4-win.zip`)
+1. Go to the [Releases](../../releases) page and download the latest zip (e.g. `BNotes书记V1.9.5-win.zip`)
 2. Extract and double-click `BNotes.exe` to run — **no installation required**, fully portable
 3. Data lives in the `data/` folder next to the program, easy to copy and migrate
 
