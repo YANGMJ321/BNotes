@@ -1,4 +1,4 @@
-﻿﻿# BNotes Portable Build Script
+﻿# BNotes Portable Build Script
 # Usage: powershell -ExecutionPolicy Bypass -File build-portable.ps1
 # Output: self-use portable in 自用版\BNotes + share zip in 分享包
 # NOTE: this file must be saved as UTF-8 WITH BOM (PowerShell 5 reads non-BOM as ANSI)
@@ -63,6 +63,8 @@ Write-Host "  Frontend build: $distDir" -ForegroundColor Green
 
 # ========== Step 3: Clean old output (preserve user data) ==========
 Write-Host "[3/10] Cleaning old output (preserving user data)..." -ForegroundColor Yellow
+
+New-Item -ItemType Directory -Force -Path (Join-Path $ProjectRoot "release") | Out-Null
 
 if (Test-Path $OutputDir) {
     $dataDir     = Join-Path $OutputDir "data"
