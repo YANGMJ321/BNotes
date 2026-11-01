@@ -3,6 +3,11 @@
     <h1>{{ isNew ? '新建书籍' : '编辑书籍' }}</h1>
 
     <form @submit.prevent="saveBook" class="edit-form">
+      <div class="draft-banner" v-if="draftRestored">
+        <span>已恢复上次未保存的草稿</span>
+        <button type="button" @click="discardDraft">放弃草稿</button>
+      </div>
+
       <div class="form-section">
         <h2>基本信息</h2>
 
@@ -35,6 +40,15 @@
             <select v-model="form.category_id">
               <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
             </select>
+            <div class="tag-input-row category-input-row">
+              <input
+                type="text"
+                v-model="categoryInput"
+                @keydown.enter.prevent="addCategory"
+                placeholder="输入名称快速新建分类"
+              />
+              <button type="button" class="btn-add-tag" @click="addCategory">新建</button>
+            </div>
           </div>
 
           <div class="form-group">
@@ -226,7 +240,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBookStore } from '../stores/books'
 import { renderMarkdown } from '../utils/markdown'
@@ -256,6 +270,7 @@ const form = reactive({
 })
 
 const tagInput = ref('')
+const categoryInput = ref('')
 const linkSearch = ref('')
 const searchResults = ref([])
 const timeMode = ref('auto')
@@ -267,6 +282,18 @@ const tagSuggestions = computed(() => {
     .filter(name => name && !form.tags.includes(name))
     .slice(0, 12)
 })
+
+// ========== 草稿自动保存（防止切出页面丢失编辑内容） ==========
+const draftRestored = ref(false)
+// 注意：必须在 setup 阶段固定 key，离开页面时 route 已变成目标路由，取不到当前 id
+const draftKey = `bnotes-draft-book-${isNew.value ? 'new' : route.params.id}`
+let loadedSnapshot = '' // 刚从数据库加载、尚未编辑时的表单快照
+let draftTimer = null
+
+watch(form, () => {
+  if (draftTimer) clearTimeout(draftTimer)
+  draftTimer = setTimeout(flushDraft, 1000)
+}, { deep: true })
 
 onMounted(async () => {
   await bookStore.fetchCategories()
@@ -290,11 +317,23 @@ onMounted(async () => {
     }
   }
 
+  // 记录初始快照，并尝试恢复上次未保存的草稿
+  loadedSnapshot = JSON.stringify(form)
+  restoreDraft()
+
   window.addEventListener('keydown', handleCtrlS)
+  // beforeunload 时 visibilityState 仍是 visible，必须直接落盘
+  window.addEventListener('beforeunload', flushDraft)
+  document.addEventListener('visibilitychange', handlePageHide)
 })
 
 onUnmounted(() => {
+  // 离开页面前立即落盘草稿，不等防抖定时器
+  flushDraft()
+  if (draftTimer) clearTimeout(draftTimer)
   window.removeEventListener('keydown', handleCtrlS)
+  window.removeEventListener('beforeunload', flushDraft)
+  document.removeEventListener('visibilitychange', handlePageHide)
 })
 
 function handleCtrlS(e) {
@@ -302,6 +341,92 @@ function handleCtrlS(e) {
     e.preventDefault()
     saveBook()
   }
+}
+
+function flushDraft() {
+  if (draftTimer) { clearTimeout(draftTimer); draftTimer = null }
+  try {
+    const current = JSON.stringify(form)
+    if (current === loadedSnapshot) {
+      // 表单与初始状态一致，无需保留草稿
+      localStorage.removeItem(draftKey)
+      return
+    }
+    try {
+      localStorage.setItem(draftKey, current)
+    } catch (e) {
+      // 封面过大超出 localStorage 限制时，去掉封面只保文字内容
+      const data = JSON.parse(current)
+      data.cover = ''
+      localStorage.setItem(draftKey, JSON.stringify(data))
+    }
+  } catch (e) {
+    console.error('保存草稿失败:', e)
+  }
+}
+
+// 页面切到后台（如切去添加分类）或窗口关闭前，立即保存草稿
+function handlePageHide() {
+  if (document.visibilityState === 'hidden') flushDraft()
+}
+
+function restoreDraft() {
+  try {
+    const saved = localStorage.getItem(draftKey)
+    if (!saved) return
+    const draft = JSON.parse(saved)
+    if (JSON.stringify(draft) === loadedSnapshot) {
+      localStorage.removeItem(draftKey)
+      return
+    }
+    applyDraft(draft)
+    draftRestored.value = true
+  } catch (e) {
+    console.error('恢复草稿失败:', e)
+  }
+}
+
+function applyDraft(d) {
+  if (!d || typeof d !== 'object') return
+  if (typeof d.title === 'string') form.title = d.title
+  if (typeof d.author === 'string') form.author = d.author
+  if (d.cover) form.cover = d.cover
+  if (d.category_id !== undefined && d.category_id !== null) form.category_id = d.category_id
+  if (typeof d.status === 'string') form.status = d.status
+  if (typeof d.progress === 'number') form.progress = d.progress
+  if (typeof d.read_date === 'string') form.read_date = d.read_date
+  if (Array.isArray(d.tags)) form.tags = d.tags
+  if (d.note && typeof d.note === 'object') {
+    if (typeof d.note.excerpts === 'string') form.note.excerpts = d.note.excerpts
+    if (typeof d.note.reflections === 'string') form.note.reflections = d.note.reflections
+    if (typeof d.note.content === 'string') form.note.content = d.note.content
+    if (d.note.note_date) {
+      form.note.note_date = d.note.note_date
+      timeMode.value = 'custom'
+    }
+  }
+  if (Array.isArray(d.links)) form.links = d.links
+}
+
+function discardDraft() {
+  try {
+    const original = JSON.parse(loadedSnapshot)
+    Object.assign(form, original)
+    timeMode.value = original.note?.note_date ? 'custom' : 'auto'
+  } catch (e) {
+    console.error('放弃草稿失败:', e)
+  }
+  localStorage.removeItem(draftKey)
+  draftRestored.value = false
+}
+
+function clearDrafts(bookId) {
+  try {
+    localStorage.removeItem(draftKey)
+    localStorage.removeItem('bnotes-draft-book-new')
+    if (bookId) localStorage.removeItem(`bnotes-draft-book-${bookId}`)
+  } catch (e) { /* 忽略 */ }
+  draftRestored.value = false
 }
 
 function addTag() {
@@ -318,6 +443,25 @@ function addTagName(name) {
 
 function removeTag(index) {
   form.tags.splice(index, 1)
+}
+
+// 快速新建分类并选中（无需跳转分类管理页）
+async function addCategory() {
+  const name = categoryInput.value.trim()
+  if (!name) return
+  const existing = categories.value.find(c => c.name === name)
+  if (existing) {
+    form.category_id = existing.id
+    categoryInput.value = ''
+    return
+  }
+  const result = await bookStore.saveCategory({ name })
+  if (result && (result.code === 200 || result.code === 201) && result.data?.id) {
+    form.category_id = result.data.id
+    categoryInput.value = ''
+  } else {
+    alert(result?.message || '新建分类失败，请重试')
+  }
 }
 
 function handleCoverUpload(e) {
@@ -383,6 +527,9 @@ async function saveBook() {
     return
   }
   if (result.code === 200 || result.code === 201) {
+    // 保存成功后清除草稿（新建时 id 刚生成，也要按新 id 清）
+    const savedBookId = isNew.value ? result.data?.id : route.params.id
+    clearDrafts(savedBookId)
     // 保存后回到书籍详情（新建时也直接打开新书详情，避免出现空白页）
     const bookId = isNew.value ? result.data?.id : route.params.id
     if (bookId) router.replace(`/books/${bookId}`)
@@ -497,6 +644,33 @@ function goBack() {
   background: var(--primary-color);
   color: #fff;
   font-size: 14px;
+  cursor: pointer;
+}
+
+.category-input-row {
+  margin-top: 10px;
+}
+
+.draft-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--primary-light);
+  color: var(--primary-color);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.draft-banner button {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  border: none;
+  border-radius: 6px;
+  background: var(--primary-color);
+  color: #fff;
+  font-size: 12px;
   cursor: pointer;
 }
 
