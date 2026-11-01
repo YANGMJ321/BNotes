@@ -42,32 +42,96 @@
 
 ## 下载使用
 
-1. 前往 [Releases](../../releases) 页面下载最新版 `BNotes-x.x.x-portable.exe`
-2. 双击即可运行，**无需安装**，绿色便携
+1. 前往 [Releases](../../releases) 页面下载最新版压缩包（如 `BNotes书记V1.9.4-win.zip`）
+2. 解压后双击 `BNotes.exe` 即可运行，**无需安装**，绿色便携
 3. 数据保存在程序同目录的 `data/` 文件夹下，方便随程序一起拷贝迁移
 
-## 开发
+## 版本更新
+
+1. 前往 [Releases](../../releases) 下载最新版压缩包，解压得到新版 `BNotes` 文件夹
+2. 把旧版文件夹中的 `data/`、`exports/`、`userdata/` 三个文件夹复制到新版文件夹中（书籍、笔记与设置全部保存在这里）
+3. 运行新版 `BNotes.exe`，确认数据完好后，旧版文件夹可自行删除
+4. 程序自带自动备份（退出时与每日定时，保留最近 10 份），更新前建议先在程序内手动备份一次，万一更新出问题可随时恢复
+
+---
+
+# Shuji BNotes (English)
+
+Shuji (BNotes) is a clean, efficient, offline-first desktop reading-notes manager. It builds a complete reading archive for every book: quote excerpts, reflections, and organized notes — nothing missed.
+
+## Features
+
+### 📚 Book Management
+- Bookshelf-style management with list / cover views
+- Reading status: Want to Read / Reading / Finished, with percentage progress tracking
+- Custom cover, author, category, and tags
+- Cross-book links (type a book title or keyword in a note to link books together)
+
+### ✍️ Note Writing
+- Three note sections per book: **Excerpts / Reflections / Organized Notes**
+- Full **Markdown** support with one-click edit / preview switching
+- Notes feed view: browse by book, excerpts, reflections, or organized notes
+- Global search across books and note content
+
+### 📊 Reading Statistics
+- Overview cards: total books, want to read, reading, finished, note count
+- Reading-status donut chart for shelf composition
+- Reading trend bar chart by year / month
+- Zero-dependency self-drawn charts, fully offline
+
+### 📄 Import & Export
+- PDF export (book info plus all notes, auto pagination)
+- HTML / plain-text export
+- Full backup export / import as a ZIP archive
+- Book sharing: share a single book with its notes for others to import
+
+### 🛡️ Data Safety
+- Auto backup: on exit and daily, keeping the latest 10, one-click restore
+- **WebDAV cloud sync**: works with Jianguoyun (Nutstore), Nextcloud, etc.
+- All data stored locally, never uploaded to any server
+
+### 🎨 Themes
+- 5 Morandi preset palettes + custom theme color picker
+- One-click light / dark mode switching
+
+### ⌨️ Productivity
+- Keyboard shortcuts for common actions (`Ctrl+F` global search, etc.)
+
+## Download & Install
+
+1. Go to the [Releases](../../releases) page and download the latest zip (e.g. `BNotes书记V1.9.4-win.zip`)
+2. Extract and double-click `BNotes.exe` to run — **no installation required**, fully portable
+3. Data lives in the `data/` folder next to the program, easy to copy and migrate
+
+## Upgrading
+
+1. Download the latest zip from [Releases](../../releases) and extract the new `BNotes` folder
+2. Copy the `data/`, `exports/`, and `userdata/` folders from your old folder into the new one (all books, notes, and settings live there)
+3. Run the new `BNotes.exe`; once you confirm your data is intact, the old folder can be deleted
+4. The app auto-backs up (on exit and daily, keeping the latest 10). Before upgrading, it is recommended to run a manual backup inside the app so you can restore anytime if anything goes wrong
+
+## Development
 
 ```bash
-# 安装依赖
+# Install dependencies
 npm install
 
-# 开发模式（前端热更新 + 后端服务）
+# Dev mode (frontend HMR + backend server)
 npm run dev:all
 
-# 构建前端产物（dist/）
+# Build frontend (dist/)
 npm run build
 
-# 打包 Windows 便携版 exe（输出到 release/）
+# Package Windows portable exe (output to release/)
 npm run dist
 ```
 
-技术栈：Electron + Vue 3 + Express + sql.js
+Tech stack: Electron + Vue 3 + Express + sql.js
 
-## 反馈
+## Feedback
 
-遇到问题或有功能建议，欢迎提交 [Issue](../../issues)。
+Questions or feature requests? Please open an [Issue](../../issues).
 
-## 许可证
+## License
 
 [MIT License](LICENSE)

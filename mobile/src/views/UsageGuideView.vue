@@ -37,6 +37,12 @@
     </section>
 
     <section class="guide-card">
+      <h2>🔄 版本更新</h2>
+      <p>有新版本时，前往发布页下载新的安装包（APK），直接覆盖安装即可，手机本地数据不会丢失。</p>
+      <p>更新前建议先在「更多 → 备份数据库」导出一份 .db 备份以防万一；更新完成后，旧版本安装包可自行删除。</p>
+    </section>
+
+    <section class="guide-card">
       <h2>📧 问题反馈</h2>
       <p>遇到 Bug 或有建议，欢迎发送邮箱：</p>
       <a class="email-link" href="mailto:yang_8211@foxmail.com">yang_8211@foxmail.com</a>
