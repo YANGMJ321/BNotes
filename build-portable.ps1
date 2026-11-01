@@ -64,6 +64,13 @@ Write-Host "  Frontend build: $distDir" -ForegroundColor Green
 # ========== Step 3: Clean old output (preserve user data) ==========
 Write-Host "[3/10] Cleaning old output (preserving user data)..." -ForegroundColor Yellow
 
+# 程序运行时会锁住 userdata 且可能写入 data，打包前必须先退出
+$runningProc = Get-Process -Name "BNotes" -ErrorAction SilentlyContinue
+if ($runningProc) {
+    Write-Host "ERROR: BNotes.exe is running. Please close the app first, then rebuild." -ForegroundColor Red
+    exit 1
+}
+
 New-Item -ItemType Directory -Force -Path (Join-Path $ProjectRoot "release") | Out-Null
 
 if (Test-Path $OutputDir) {
