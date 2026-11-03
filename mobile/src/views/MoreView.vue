@@ -46,9 +46,9 @@
         <span class="more-arrow">›</span>
       </router-link>
 
-      <router-link to="/donate" class="more-item">
+      <router-link to="/support" class="more-item">
         <span class="more-icon">💝</span>
-        <span class="more-text">打赏</span>
+        <span class="more-text">支持</span>
         <span class="more-arrow">›</span>
       </router-link>
 

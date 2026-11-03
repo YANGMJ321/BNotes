@@ -10,7 +10,7 @@ import ThemeSettings from '@desktop/views/ThemeSettings.vue'
 import ImportExport from '@desktop/views/ImportExport.vue'
 import MoreView from '../views/MoreView.vue'
 import UsageGuideView from '../views/UsageGuideView.vue'
-import DonateView from '../views/DonateView.vue'
+import SupportView from '../views/SupportView.vue'
 import FeedbackContact from '../views/FeedbackContact.vue'
 import ProfileView from '../views/ProfileView.vue'
 import StatsMobile from '../views/StatsMobile.vue'
@@ -30,7 +30,7 @@ const routes = [
   { path: '/stats', name: 'Stats', component: StatsMobile },
   { path: '/more', name: 'More', component: MoreView },
   { path: '/usage-guide', name: 'UsageGuide', component: UsageGuideView },
-  { path: '/donate', name: 'Donate', component: DonateView },
+  { path: '/support', name: 'Support', component: SupportView },
   { path: '/profile', name: 'Profile', component: ProfileView }
 ]
 

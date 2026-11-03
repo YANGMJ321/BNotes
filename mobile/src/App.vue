@@ -66,7 +66,7 @@ const isDark = ref(document.documentElement.classList.contains('dark'))
 const showSearchFab = computed(() => route.path === '/' || route.path === '/notes')
 
 const isMoreActive = computed(() => {
-  return ['/more', '/import-export', '/feedback', '/theme', '/usage-guide', '/donate', '/profile', '/stats'].includes(route.path)
+  return ['/more', '/import-export', '/feedback', '/theme', '/usage-guide', '/support', '/profile', '/stats'].includes(route.path)
 })
 
 async function openSearch() {

@@ -49,13 +49,13 @@
       <a class="email-link" href="mailto:yang_8211@foxmail.com">yang_8211@foxmail.com</a>
     </section>
 
-    <section class="guide-card donate-card">
-      <h2>💝 赞助支持</h2>
+    <section class="guide-card support-card">
+      <h2>💝 支持开发者</h2>
       <p>
-        本项目完全开源免费，可自由使用、修改、分发。赞助属于自愿打赏，不构成付费购买，不提供售后、功能定制与服务承诺。
+        本项目完全免费，可自由使用、修改、分发。支持属于自愿行为，不构成付费购买，不提供售后、功能定制与服务承诺。
       </p>
       <p>如果这个软件陪你读完了几本好书，欢迎请作者喝一瓶可乐——快乐水到位，更新更有劲！</p>
-      <router-link to="/donate" class="donate-btn">前往打赏 ›</router-link>
+      <router-link to="/support" class="support-btn">前往支持 ›</router-link>
     </section>
   </div>
 </template>
@@ -150,11 +150,11 @@ function goBack() {
   word-break: break-all;
 }
 
-.donate-card {
+.support-card {
   border-color: var(--primary-color);
 }
 
-.donate-btn {
+.support-btn {
   display: inline-block;
   margin-top: 6px;
   padding: 8px 18px;

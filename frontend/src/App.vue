@@ -42,9 +42,9 @@
           <span class="icon">🎨</span>
           <span>主题</span>
         </router-link>
-        <router-link to="/donate" class="nav-item donate-link">
+        <router-link to="/support" class="nav-item support-link">
           <span class="icon">☕</span>
-          <span>打赏</span>
+          <span>支持</span>
         </router-link>
         <button class="theme-toggle" @click="toggleTheme" title="切换主题">
           <span>{{ isDark ? '☀️' : '🌙' }}</span>
@@ -226,20 +226,20 @@ watch(() => route.path, () => {
   background: var(--hover-bg);
 }
 
-/* 打赏入口保持低调：字号更小、颜色弱化，悬停才高亮 */
-.donate-link {
+/* 支持入口保持低调：字号更小、颜色弱化，悬停才高亮 */
+.support-link {
   padding: 8px 16px;
   font-size: 13px;
   color: var(--text-secondary);
   opacity: 0.7;
 }
 
-.donate-link .icon {
+.support-link .icon {
   margin-right: 8px;
   font-size: 14px;
 }
 
-.donate-link:hover {
+.support-link:hover {
   opacity: 1;
 }
 

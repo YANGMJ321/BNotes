@@ -10,7 +10,7 @@ import FeedbackView from '../views/FeedbackView.vue'
 import ThemeSettings from '../views/ThemeSettings.vue'
 import ImportExport from '../views/ImportExport.vue'
 import StatisticsView from '../views/StatisticsView.vue'
-import DonateView from '../views/DonateView.vue'
+import SupportView from '../views/SupportView.vue'
 
 const routes = [
   { path: '/', name: 'Home', component: Home },
@@ -25,7 +25,7 @@ const routes = [
   { path: '/theme', name: 'Theme', component: ThemeSettings },
   { path: '/import-export', name: 'ImportExport', component: ImportExport },
   { path: '/stats', name: 'Stats', component: StatisticsView },
-  { path: '/donate', name: 'Donate', component: DonateView }
+  { path: '/support', name: 'Support', component: SupportView }
 ]
 
 const router = createRouter({

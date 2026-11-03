@@ -1,6 +1,6 @@
-﻿# BNotes Portable Build Script
+﻿﻿# BNotes Portable Build Script
 # Usage: powershell -ExecutionPolicy Bypass -File build-portable.ps1
-# Output: self-use portable in 自用版\BNotes + share zip in 分享包
+# Output: portable app build + release zip (local folder names are encoded below)
 # NOTE: this file must be saved as UTF-8 WITH BOM (PowerShell 5 reads non-BOM as ANSI)
 
 $ErrorActionPreference = "Stop"
@@ -8,8 +8,8 @@ $ErrorActionPreference = "Stop"
 # ========== Config ==========
 $ProjectRoot   = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ElectronDir   = Join-Path $ProjectRoot "node_modules\electron\dist"
-$SelfUseName   = -join [char[]](0x81EA, 0x7528, 0x7248)   # "自用版" (-join: no OFS spaces)
-$ShareName     = -join [char[]](0x5206, 0x4EAB, 0x5305)   # "分享包"
+$SelfUseName   = -join [char[]](0x81EA, 0x7528, 0x7248)   # local output folder (encoded, no literal text)
+$ShareName     = -join [char[]](0x5206, 0x4EAB, 0x5305)   # release folder (encoded, no literal text)
 $BrandName     = -join [char[]](0x4E66, 0x8BB0)           # "书记"
 $OutputDir     = Join-Path (Join-Path $ProjectRoot $SelfUseName) "BNotes"
 $ShareDir      = Join-Path $ProjectRoot $ShareName
