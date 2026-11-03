@@ -1,4 +1,4 @@
-﻿﻿# BNotes Portable Build Script
+﻿# BNotes Portable Build Script
 # Usage: powershell -ExecutionPolicy Bypass -File build-portable.ps1
 # Output: portable app build + release zip (local folder names are encoded below)
 # NOTE: this file must be saved as UTF-8 WITH BOM (PowerShell 5 reads non-BOM as ANSI)
@@ -278,7 +278,7 @@ Write-Host "  Build verified ($sizeMB MB)" -ForegroundColor Green
 Write-Host "[10/10] Building share zip (excluding user data)..." -ForegroundColor Yellow
 
 $stage = Join-Path $ProjectRoot "release\_share_stage"
-if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
+if (Test-Path $stage) { Remove-Item ("\\" + "?\" + $stage) -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $stage | Out-Null
 
 $ErrorActionPreference = "Continue"
@@ -296,7 +296,7 @@ if (-not (Get-ChildItem -Path $ShareDir -ErrorAction SilentlyContinue)) {
 }
 $zipPath = Join-Path $ShareDir "BNotes${BrandName}V$version-win.zip"
 Compress-Archive -Path (Join-Path $stage "BNotes") -DestinationPath $zipPath -Force
-Remove-Item $stage -Recurse -Force
+Remove-Item ("\\" + "?\" + $stage) -Recurse -Force
 
 $zipSize = [math]::Round((Get-Item $zipPath).Length / 1MB, 1)
 Write-Host "  Share zip: $zipPath ($zipSize MB)" -ForegroundColor Green
