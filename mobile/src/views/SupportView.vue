@@ -1,34 +1,34 @@
 <template>
-  <div class="donate-view">
-    <div class="donate-header">
+  <div class="support-view">
+    <div class="support-header">
       <button class="back-btn" @click="goBack">‹ 返回</button>
-      <h1>💝 打赏</h1>
+      <h1>💝 支持开发者</h1>
     </div>
 
-    <div class="donate-intro">
+    <div class="support-intro">
       <p>
-        本项目完全开源免费，可自由使用、修改、分发。赞助属于自愿打赏，不构成付费购买，不提供售后、功能定制与服务承诺。
+        本项目完全免费，可自由使用、修改、分发。支持属于自愿行为，不构成付费购买，不提供售后、功能定制与服务承诺。
       </p>
       <p>如果这个软件陪你读完了几本好书，欢迎请作者喝一瓶可乐——快乐水到位，更新更有劲！</p>
     </div>
 
     <div class="qr-grid">
       <div v-if="wechatAppreciation" class="qr-item" @click="preview(wechatAppreciation)">
-        <img :src="wechatAppreciation" alt="微信固定金额赞赏" />
-        <span class="qr-label">微信赞赏码</span>
+        <img :src="wechatAppreciation" alt="微信固定金额" />
+        <span class="qr-label">微信</span>
       </div>
       <div v-if="wechatPay" class="qr-item" @click="preview(wechatPay)">
-        <img :src="wechatPay" alt="微信任意金额打赏" />
+        <img :src="wechatPay" alt="微信任意金额" />
         <span class="qr-label">微信任意金额</span>
       </div>
       <div v-if="alipay" class="qr-item" @click="preview(alipay)">
-        <img :src="alipay" alt="支付宝任意金额打赏" />
+        <img :src="alipay" alt="支付宝任意金额" />
         <span class="qr-label">支付宝任意金额</span>
       </div>
     </div>
 
-    <p class="donate-thanks">感谢你的每一份鼓励 ♥</p>
-    <p class="donate-tip">长按或点击二维码可放大查看，截图后到微信 / 支付宝「扫一扫」中选择相册识别即可打赏。</p>
+    <p class="support-thanks">感谢你的每一份鼓励 ♥</p>
+    <p class="support-tip">长按或点击二维码可放大查看，截图后到微信 / 支付宝「扫一扫」中选择相册识别即可。</p>
 
     <div v-if="previewSrc" class="preview-mask" @click="previewSrc = null">
       <img :src="previewSrc" alt="二维码放大" />
@@ -40,9 +40,9 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-// 打赏码属于个人收款码，永不入版本库（见 DEV_PROTOCOL.md）。
-// 本地 assets/donate/ 缺失时此处为空对象，页面自动隐藏二维码区域，构建不报错。
-const modules = import.meta.glob('../assets/donate/*.{jpg,jpeg,png}', { eager: true, import: 'default' })
+// 个人图片资源不入版本库，统一在本地忽略规则中维护。
+// 本地 assets/support/ 缺失时此处为空对象，页面自动隐藏二维码区域，构建不报错。
+const modules = import.meta.glob('../assets/support/*.{jpg,jpeg,png}', { eager: true, import: 'default' })
 
 function img(name) {
   const key = Object.keys(modules).find(k => k.endsWith(`/${name}`))
@@ -70,11 +70,11 @@ function preview(src) {
 </script>
 
 <style scoped>
-.donate-view {
+.support-view {
   padding: 16px;
 }
 
-.donate-header {
+.support-header {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -92,12 +92,12 @@ function preview(src) {
   -webkit-tap-highlight-color: transparent;
 }
 
-.donate-header h1 {
+.support-header h1 {
   font-size: 20px;
   margin: 0;
 }
 
-.donate-intro {
+.support-intro {
   background: var(--card-bg);
   border: 1px solid var(--border-color);
   border-radius: 12px;
@@ -105,14 +105,14 @@ function preview(src) {
   margin-bottom: 16px;
 }
 
-.donate-intro p {
+.support-intro p {
   font-size: 14px;
   line-height: 1.7;
   color: var(--text-color);
   margin: 0 0 8px;
 }
 
-.donate-intro p:last-child {
+.support-intro p:last-child {
   margin-bottom: 0;
 }
 
@@ -152,14 +152,14 @@ function preview(src) {
   text-align: center;
 }
 
-.donate-thanks {
+.support-thanks {
   margin-top: 20px;
   text-align: center;
   font-size: 14px;
   color: var(--text-color);
 }
 
-.donate-tip {
+.support-tip {
   margin-top: 8px;
   text-align: center;
   font-size: 12px;
